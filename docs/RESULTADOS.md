@@ -177,6 +177,27 @@ La fila del host `web1` aparece resaltada en la captura intermedia. El contador 
 
 **Archivos y publicación:** los **tres PNG originales ya están publicados en GitHub `main`** dentro de `docs/evidencias/` (commit [`b685f277`](https://github.com/EdgarAntonioPerezFlores/distributedsystems/commit/b685f2771b54f6462f0c4f4cf49f48a645d26548)). La galería con las tres imágenes está disponible en [docs/evidencias/README.md](evidencias/README.md). Se verificó que los blobs subidos coinciden exactamente con el contenido de las capturas originales.
 
+### Evidencia correlacionada de Nagios y fallo real de `web1` (24-10-2026)
+
+**Ahora sí se cuenta con registros de Nagios y del ensayo que incluyen marcas temporales del mismo intervalo UTC.** El operador mostró la salida de `results/fault-20261024T223842Z-web1.log` y las entradas de `/opt/nagios/var/nagios.log`. Los archivos brutos existen localmente en la VM, pero **todavía no se han incorporado a GitHub**. Se convierte la marca epoch del log de Nagios a UTC para hacer la correlación:
+
+| Momento UTC | Fuente / evento observado | Relativo a la inyección |
+|---|---|---:|
+| **22:38:42** | `fault.sh`: «Inyectando stop en web1 por 120 segundos» | 0 s |
+| **22:38:48** | Nagios: `HOST ALERT: web1;DOWN;SOFT;1` (`1792881528`) | +6 s |
+| **22:38:56** | Nagios: `SERVICE ALERT: web1;Website HTTP;CRITICAL;HARD;1` (`1792881536`) | +14 s |
+| **22:39:30** | Nagios: `HOST ALERT: web1;DOWN;HARD;2` (`1792881570`) | +48 s |
+| **22:40:45** | `fault.sh`: «Recuperación solicitada: web1» | +123 s |
+| **22:40:56** | Nagios: `SERVICE ALERT: web1;Website HTTP;OK;HARD;1` y `HOST ALERT: web1;UP;HARD;1` (`1792881656`) | +134 s |
+
+**Conclusión medida de un ensayo:** primera detección de host `DOWN` tipo SOFT a los **6 s**; servicio `CRITICAL` tipo HARD a los **14 s**; host `DOWN` tipo HARD a los **48 s**. La recuperación de servicio y host se **registró 11 s después de la solicitud** de recuperación (no necesariamente 11 s desde el reinicio efectivo del proceso). La ventana completa hasta el estado `UP/OK` registrado duró **134 s desde el inicio de la inyección**, de los cuales aproximadamente 120 s fueron parada **intencional**. Se puede reportar **latencia de detección observada y tiempo de recuperación de este ensayo**, pero **no una media MTTD/MTTR representativa** de múltiples ensayos, ni disponibilidad bajo carga de esta segunda prueba sin sonda concurrente.
+
+Los mensajes `Temporary failure in name resolution` / `Invalid hostname, address or socket: web1` corresponden al resultado reportado por los checks mientras el servicio `web1` estaba parado; no prueban una avería nueva de DNS del sistema operativo. Los tres PNG de [Nagios](evidencias/README.md) continúan mostrando **30 servicios OK en los instantes capturados**. **La evidencia del estado `CRITICAL;HARD` procede del log, no de las capturas.** La marca 22:38–22:41 de la galería es coherente con esta línea temporal; la prueba distinta de 22:14–22:16 se mantiene documentada por separado.
+
+**Otros resultados inspeccionados en esta sesión:** `results/sonda-fallo-web1.csv` tiene 145 muestras entre 15:56:45.914852Z y 15:59:15.512954Z, de las cuales 144 fueron exitosas y una tuvo `TimeoutError` a las **15:57:51.379188Z**. `fault-20261024T155743Z-web1.log` registró el inicio de inyección a las 15:57:43Z y la recuperación solicitada a las 15:58:16Z; la muestra con fallo ocurrió **8.38 s después de la inyección**, observación temporal coherente pero no atribución causal definitiva. `results/ab-20261024T153524Z-c5/ab.txt` volvió a informar 9,107 solicitudes, 0 fallidas por ApacheBench, 303.56 req/s, p50=14 ms, p95=34 ms, p99=55 ms.
+
+**Limitación para `app1`:** se detectó el archivo `results/sonda-fallo-app1.csv`, pero el script de resumen terminó con `AttributeError: 'NoneType' object has no attribute 'strip'` al leer el campo `ok`, sin mostrar todavía métricas de ese archivo. No se encontró log de inyección `fault-*-app1.log` en el inventario. **No se acredita failover de `app1`** hasta comprobar estructura y contenido de la sonda y la acción realizada.
+
 ### Segunda campaña: mediciones por repetir
 
 | Prueba | Estado de esta segunda campaña | Evidencia pendiente |
@@ -189,7 +210,7 @@ La fila del host `web1` aparece resaltada en la captura intermedia. El contador 
 | Rendimiento desde LAN | Pendiente | Peticiones, fallos, RPS, p95, p99, recursos |
 | Fallo controlado de `app1` | Pendiente | Sonda continua, recuperación y servicio del resto de API |
 | Failover de HAProxy/Keepalived | Pendiente; condicionado a corregir/verificar VIP | Antes/durante/después de la elección |
-| Nagios | **Tres PNG originales publicados: 24 UP → 23 UP / 1 DOWN → 24 UP; 30 servicios OK** | Correlacionar con el log del fallo; sin servicio CRITICAL observado |
+| Nagios | **Tres PNG: 24 UP → 23 UP / 1 DOWN → 24 UP; además logs `DOWN;HARD` y `CRITICAL;HARD` confirmados en 22:38–22:40 UTC** | Publicar extractos de logs saneados; reunir varios ensayos si se exige promediar MTTD/MTTR |
 
 Los valores medidos en la primera campaña se conservan más abajo como evidencias históricas y **no deben copiarse como resultados de esta segunda campaña**.
 
@@ -260,7 +281,7 @@ Ejecutada en el servidor VM con `bash tests/load.sh "http://192.168.1.88" 5 30` 
 | Fallo controlado de web1 | 30 s de parada solicitada; sonda 150 s | — | — | 144 / 145 muestras exitosas; 99.31 % muestreado | Pendiente | `results/sonda-fallo-web1.csv` (VM) | Ejecutado; una muestra fallida |
 | Failover API/LB/SQL/Redis/Mongo | Un fallo por escenario | — | — | — | — | Pendiente | No ejecutado |
 | Chaos Monkey, red, recursos | Escenarios controlados | — | — | — | — | Pendiente | No ejecutado |
-| Nagios / alertas / recuperación | Capturas, logs, CSV | — | — | — | — | Pendiente | No cuantificado |
+| Nagios / alertas / recuperación | Fallo web1 de 120 s + registros UTC | — | — | DOWN SOFT +6 s; CRITICAL HARD +14 s; DOWN HARD +48 s; UP/OK +134 s | — | `results/fault-20261024T223842Z-web1.log` y Nagios (VM) | **Un ensayo correlacionado; falta publicar logs** |
 
 ## Registro de cada fallo
 
@@ -287,7 +308,7 @@ Copiar esta ficha por escenario y añadir ruta de evidencia:
 | 2 | Carga remota/estrés/spike/soak con recursos | **Smoke local medido** (9,107 peticiones); ensayos externos y prolongados pendientes |
 | 3 | Failover de web/API/LB/Galera/proxy/Redis/Mongo y continuidad | **web1 parado y recuperado;** en primera campaña 144/145 muestras exitosas; failover de las demás capas pendiente |
 | 4 | Chaos Monkey, red, recursos y límites | **No ejecutado** en esta campaña; no atribuir resultados |
-| 5 | Nagios, MTTD/MTTR, alertas y presupuesto de error | **Panel accesible desde Windows y 3 PNG publicados: host DOWN → UP**; no hay servicio CRITICAL en esas vistas ni MTTD/MTTR medido |
+| 5 | Nagios, MTTD/MTTR, alertas y presupuesto de error | **Tres PNG host DOWN → UP y logs del mismo ensayo con servicio CRITICAL HARD y recuperación OK HARD**; tiempos de una ejecución calculados, pero no media estadística MTTD/MTTR ni error budget con carga |
 
 ## Ejecución y recolección
 
@@ -295,4 +316,4 @@ Seguir `docs/PRUEBAS.md` **por etapas**, no todos los fallos a la vez. Confirmar
 
 ## Conclusión provisional
 
-Los requisitos de arquitectura y archivos de entrega — [JPG](arquitectura.jpg), documentación y configuración/IaC — están incluidos en `main`. La VM ha demostrado funcionamiento de clústeres Galera y MongoDB, quórum Redis Sentinel, balanceo entre tres web/API y una carga local de 9,107 peticiones sin fallos reportados por ApacheBench. Se comprobó replicación SQL y escritura/lectura Mongo mediante API. Se observó recuperación después de detener un servidor web (primera sonda local: 144/145 muestras) y **Nagios registró visualmente un host DOWN que luego volvió a UP**, respaldado por [tres PNG reales](evidencias/README.md); los 30 servicios aparecen OK en esas imágenes, no CRITICAL. **Todavía no se ha demostrado failover real de un balanceador, HA de host, disponibilidad externa sostenida, Chaos Engineering ni MTTD/MTTR calculado.** La VM y el contenedor de entrada constituyen puntos únicos de fallo; no se afirma despliegue en AWS ni disponibilidad de producción. [Resumen final de entrega](ENTREGA.md).
+Los requisitos de arquitectura y archivos de entrega — [JPG](arquitectura.jpg), documentación y configuración/IaC — están incluidos en `main`. La VM ha demostrado funcionamiento de clústeres Galera y MongoDB, quórum Redis Sentinel, balanceo entre tres web/API y una carga local de 9,107 peticiones sin fallos reportados por ApacheBench. Se comprobó replicación SQL y escritura/lectura Mongo mediante API. Se observó recuperación después de detener un servidor web (primera sonda local: 144/145 muestras) y **Nagios registró visualmente un host DOWN que luego volvió a UP**, respaldado por [tres PNG reales](evidencias/README.md); los 30 servicios aparecen OK en esas imágenes, no CRITICAL. **Todavía no se ha demostrado failover real de un balanceador, HA de host, disponibilidad externa sostenida ni Chaos Engineering.** La cronología Nagios de un ensayo sí está cuantificada, pero no hay media estadística MTTD/MTTR de varias ejecuciones. La VM y el contenedor de entrada constituyen puntos únicos de fallo; no se afirma despliegue en AWS ni disponibilidad de producción. [Resumen final de entrega](ENTREGA.md).
