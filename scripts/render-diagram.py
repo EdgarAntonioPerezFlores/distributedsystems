@@ -1,0 +1,88 @@
+from PIL import Image, ImageDraw, ImageFont
+from pathlib import Path
+import math
+W,H=1800,2220
+im=Image.new('RGB',(W,H),'#f8fafc');d=ImageDraw.Draw(im)
+font='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+bold='/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
+def f(n,b=False):return ImageFont.truetype(bold if b else font,n)
+def txt(x,y,t,n=25,fill='#243247',b=False,anchor=None):d.text((x,y),t,font=f(n,b),fill=fill,anchor=anchor)
+def box(x,y,w,h,title,color='#5e35b1',subtitle=None):
+ d.rounded_rectangle((x,y,x+w,y+h),radius=18,fill='white',outline=color,width=3)
+ d.rounded_rectangle((x+18,y+18,x+74,y+74),radius=9,fill=color)
+ # Generic cloud architecture component icon (not a managed AWS product).
+ d.rectangle((x+31,y+30,x+60,y+59),outline='white',width=3)
+ for q in (37,48):d.line((x+36,y+q,x+55,y+q),fill='white',width=2)
+ txt(x+92,y+22,title,25,b=True)
+ if subtitle:
+  for j,line in enumerate(subtitle.split('\n')):txt(x+92,y+58+j*29,line,21)
+def group(y,h,label,color):
+ d.rounded_rectangle((65,y,1735,y+h),radius=20,fill='#ffffff',outline='#cdd6e2',width=2)
+ d.rounded_rectangle((85,y-17,85+len(label)*16,y+24),radius=8,fill=color)
+ txt(102,y-10,label,22,fill='white',b=True)
+def arrow(points,color='#66778c',width=3,dashed=False):
+ if not dashed:d.line(points,fill=color,width=width,joint='curve')
+ else:
+  for a,b in zip(points,points[1:]):
+   dx,dy=b[0]-a[0],b[1]-a[1];length=math.hypot(dx,dy)
+   for k in range(0,int(length),15):
+    t1=k/length;t2=min((k+8)/length,1)
+    d.line((a[0]+dx*t1,a[1]+dy*t1,a[0]+dx*t2,a[1]+dy*t2),fill=color,width=width)
+ x,y=points[-1];x0,y0=points[-2];ang=math.atan2(y-y0,x-x0)
+ p=[(x,y),(x-15*math.cos(ang-.42),y-15*math.sin(ang-.42)),(x-15*math.cos(ang+.42),y-15*math.sin(ang+.42))];d.polygon(p,fill=color)
+txt(70,48,'SISTEMA DISTRIBUIDO',48,b=True)
+txt(70,112,'Tres capas · Ubuntu / VirtualBox · Docker Compose',28,fill='#607086')
+d.rounded_rectangle((1260,48,1730,126),radius=12,fill='#fff1dc')
+txt(1495,71,'LABORATORIO LOCAL',24,fill='#945c0b',b=True,anchor='mt')
+box(430,173,940,106,'Compañero / usuarios','\x23e78b15','Carga externa: ab · Siege · JMeter | LAN o VPN privada')
+arrow([(900,279),(900,325)])
+box(430,325,940,105,'IP de Ubuntu :80 → presentation-entry','#e78b15','Puerto publicado en Docker · punto único de entrada')
+arrow([(900,430),(900,498)])
+group(478,238,'01  PRESENTACIÓN · BALANCEO','#693cc5')
+txt(900,503,'VIP 172.30.0.250:80',26,b=True,anchor='mt')
+box(180,558,560,112,'HAProxy master','#693cc5','Keepalived · prioridad 110')
+box(1060,558,560,112,'HAProxy backup','#693cc5','Keepalived · prioridad 100')
+arrow([(740,615),(1060,615)],'#a091bc',dashed=True)
+txt(900,638,'VRRP / failover',18,fill='#75658b',anchor='mt')
+group(755,180,'01  PRESENTACIÓN · WEB','#e78b15')
+arrow([(900,716),(900,780),(380,780),(380,808)])
+arrow([(900,780),(900,808)])
+arrow([(900,780),(1420,780),(1420,808)])
+for x,n in [(130,1),(650,2),(1170,3)]:box(x,808,500,97,f'Web {n} · Nginx','#e78b15','HTML + proxy /api/')
+arrow([(900,935),(900,997)])
+group(975,235,'02  APLICACIÓN · BALANCEO','#693cc5')
+txt(900,1001,'VIP 172.31.0.250:8080',26,b=True,anchor='mt')
+box(180,1058,560,110,'HAProxy master','#693cc5','Keepalived · prioridad 110')
+box(1060,1058,560,110,'HAProxy backup','#693cc5','Keepalived · prioridad 100')
+arrow([(740,1114),(1060,1114)],'#a091bc',dashed=True)
+txt(900,1138,'VRRP / failover',18,fill='#75658b',anchor='mt')
+group(1250,180,'02  APLICACIÓN · API','#e78b15')
+arrow([(900,1210),(900,1278),(380,1278),(380,1308)])
+arrow([(900,1278),(900,1308)])
+arrow([(900,1278),(1420,1278),(1420,1308)])
+for x,n in [(130,1),(650,2),(1170,3)]:box(x,1308,500,97,f'API {n} · Node.js','#e78b15','SQL · reseñas · caché')
+group(1480,535,'03  DATOS · RED PRIVADA','#2876bb')
+# API data bus fans out to the three separate dependencies.
+arrow([(900,1430),(900,1498),(360,1498),(360,1545)])
+arrow([(900,1498),(900,1545)])
+arrow([(900,1498),(1440,1498),(1440,1545)])
+box(120,1545,480,135,'Redis + Sentinel','#b6493c','3 Redis · master + 2 réplicas\n3 Sentinel · quorum 2')
+box(660,1545,480,135,'db-proxy1 / 2','#2876bb','HAProxy TCP · checks wsrep\nLecturas y escrituras SQL')
+box(1200,1545,480,135,'MongoDB rs0','#35966d','3 miembros con voto\nPrimary + 2 secondary')
+txt(360,1700,'Caché desechable · TTL 60 s',21,fill='#8c463c',anchor='mt')
+txt(1440,1700,'Reseñas · escritura majority',21,fill='#287a59',anchor='mt')
+arrow([(900,1680),(900,1778),(380,1778),(380,1815)])
+arrow([(900,1778),(900,1815)])
+arrow([(900,1778),(1420,1778),(1420,1815)])
+for x,n in [(130,1),(650,2),(1170,3)]:box(x,1815,500,112,f'Galera {n} · MariaDB','#2876bb','Volumen + check HTTP :9200')
+arrow([(630,1870),(650,1870)],'#2876bb',dashed=True)
+arrow([(1150,1870),(1170,1870)],'#2876bb',dashed=True)
+txt(900,1952,'Replicación Galera · Primary / Synced · quorum 2 de 3',24,fill='#246497',anchor='mt')
+d.rounded_rectangle((65,2050,1735,2113),radius=10,fill='#e9eef5')
+txt(900,2069,'Observación transversal: Nagios + logs JSON + docker stats + sondas del cliente',24,anchor='mt')
+txt(70,2145,'Una sola VM: tolera fallos de contenedores; no tolera la pérdida del host.',24,b=True)
+txt(70,2182,'Estilo cloud inspirado en la referencia. No representa un despliegue real en AWS.',20,fill='#607086')
+out=Path(__file__).resolve().parents[1]/'docs';out.mkdir(exist_ok=True)
+im.save(out/'arquitectura.jpg',quality=88,subsampling=0,optimize=True)
+
+print(out/'arquitectura.jpg')

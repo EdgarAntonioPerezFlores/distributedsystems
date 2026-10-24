@@ -16,7 +16,7 @@ import urllib.error
 import urllib.request
 
 OUT = sys.argv[1]
-PROJECT = os.environ.get("CHAOS_PROJECT", "distributed-three-tier")
+PROJECT = os.environ.get("CHAOS_PROJECT", "distributed-ha-lab")
 GROUP = os.environ.get("GROUP", "web")
 TARGETS = [t.strip() for t in os.environ.get("TARGETS", "").split(",") if t.strip()]
 ACTION = os.environ.get("ACTION", "stop")
@@ -35,8 +35,8 @@ GROUPS = {
     "application-lb": ["application-lb-master", "application-lb-backup"],
     "app": ["app1", "app2", "app3"],
     "galera": ["galera1", "galera2", "galera3"],
-    "redis": ["redis"],
-    "mongodb": ["mongodb"],
+    "redis": ["redis1", "redis2", "redis3"],
+    "mongodb": ["mongo1", "mongo2", "mongo3"],
 }
 GROUPS["any"] = sum(GROUPS.values(), [])
 PROTECTED = {"presentation-entry", "nagios", "catalog-init"}
