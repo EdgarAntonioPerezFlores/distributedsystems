@@ -3,10 +3,17 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 docker compose version >/dev/null
 test -s .env && test -s secrets/mongo-keyfile
-if docker volume inspect distributed-ha-lab_galera1-data >/dev/null 2>&1; then
- echo 'Hay un volumen Galera existente. Usa docs/OPERACION.md; no se hace bootstrap automático.' >&2
- exit 1
-fi
+case "${1:-}" in
+  --resume-empty) bash scripts/assert-empty-galera.sh ;;
+  "")
+    for node in 1 2 3; do
+      if docker volume inspect "distributed-ha-lab_galera${node}-data" >/dev/null 2>&1; then
+        echo 'Hay volúmenes Galera. Usa OPERACION.md; si falló la validación inicial de contraseña, usa scripts/repair-initial-passwords.sh.' >&2
+        exit 1
+      fi
+    done ;;
+  *) echo 'Uso: bash scripts/first-start.sh [--resume-empty]' >&2; exit 2 ;;
+esac
 mkdir -p results
 docker compose config --quiet
 docker compose pull --ignore-buildable

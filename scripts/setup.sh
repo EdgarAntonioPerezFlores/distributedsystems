@@ -7,7 +7,7 @@ umask 077
 mkdir -p secrets results
 cp .env.example .env
 for name in MARIADB_ROOT_PASSWORD MARIADB_BACKUP_PASSWORD CATALOG_DB_PASSWORD MONGO_ROOT_PASSWORD MONGO_APP_PASSWORD REDIS_PASSWORD NAGIOSADMIN_PASSWORD; do
-  value=$(openssl rand -hex 24)
+  value=$(openssl rand -hex 16)
   sed -i "s/^${name}=.*/${name}=${value}/" .env
 done
 openssl rand -base64 756 > secrets/mongo-keyfile
