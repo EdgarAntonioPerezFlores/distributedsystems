@@ -4,6 +4,17 @@
 
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
+### Estado actual del laboratorio y capacidad de disco (24-10-2026)
+
+**Origen:** salidas recientes de Ubuntu proporcionadas por el responsable después de comprobar `df -h /`, `docker system df`, `docker compose ps` y `curl --noproxy '*' -fsS --max-time 10 http://localhost/api/health/deep`. Estas comprobaciones son **no destructivas** y no constituyen una ejecución nueva de carga ni de failover.
+
+- **Disco raíz:** `/dev/sda2`, 25 GB totales, 22 GB usados, **1.3 GB libres, 95 % ocupado**. Es el bloqueo actual para pruebas prolongadas o nuevas construcciones de imágenes.
+- **Docker:** 24 imágenes (21 activas; tamaño total reportado 6.933 GB y 1.283 GB marcado como reclaimable, **no** como espacio garantizado/liberable sin inspección); 39 contenedores (33 activos); 27 volúmenes (24 activos; 2.069 GB y 0 B reclamables); build cache 61 entradas, 544.5 MB, 184.3 kB reclamables.
+- `docker compose ps`: `app1–3`, `web1–3`, HAProxy de presentación y aplicación master/backup, Keepalived de ambas capas, `db-proxy1/2`, `galera-check1–3`, `sentinel1–3` y `nagios` aparecen **Up**; `galera1–3`, `mongo1–3` y `redis1–3` aparecen **Up (healthy)**. Nagios publica únicamente `127.0.0.1:8088->80/tcp`; la entrada principal publica TCP/80.
+- La salud profunda respondió **`{"sql":true,"mongo":true,"cache":true}`**.
+
+**Decisión:** no iniciar pruebas de estrés, inyecciones sobre Galera/MongoDB/Redis ni crear imágenes del Chaos Monkey mientras el disco siga al 95 %. **Inspeccionar primero**, sin borrados automáticos, `docker info --format '{{.DockerRootDir}}'`, `sudo du -xhd1 /var /home 2>/dev/null | sort -h | tail -n 25` y `sudo journalctl --disk-usage`. No ejecutar `docker system prune --volumes`, `docker compose down -v` ni borrar volúmenes. Después de asegurar espacio y preservar evidencia, continuar pruebas restantes del [checklist](PENDIENTES-TEST-PLAN.md).
+
 ## Equipo y entorno
 
 - Servidor: Ubuntu en una VM de VirtualBox; Docker Compose, proyecto `distributed-ha-lab`.
