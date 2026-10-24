@@ -22,12 +22,27 @@ Se registró una IP LAN posterior al cambio de Wi-Fi, `192.168.100.29`, diferent
 
 **Advertencias antes de repetir pruebas de fallo:** en un diagnóstico previo se observó asignación simultánea de una VIP a ambos Keepalived de presentación; se debe volver a comprobar la exclusividad de las VIP `172.30.0.250` y `172.31.0.250`. El disco de la VM reportó **95 % de ocupación** (aproximadamente 1.4 GB libres). También se observaron dos procesos `dockerd` (Snap y APT) y un bloqueo AppArmor de señales durante un reinicio anterior. El acceso HTTP recuperado no demuestra que todos esos riesgos hayan desaparecido.
 
+### Segunda campaña — Prueba 1: estado general y verificación de servicios (24-10-2026)
+
+**Origen:** salida compartida desde Ubuntu/VirtualBox, trabajando en la rama local `main`, sin cambios mostrados por `git status --short`. Archivo de evidencia en la VM: `results/baseline-repeticion.txt` (no incluido íntegro en el material aportado: se recibió el código de salida y sus últimas 80 líneas).
+
+- `docker compose ps -a`: `app1`, `app2`, `app3`, los tres Nginx, HAProxy, Keepalived, los proxies SQL y Sentinel figuran `Up`. Galera 1–3, MongoDB 1–3 y Redis 1–3 figuran `Up (healthy)`. Los trabajos de inicialización `mongo-init` y `catalog-init` están `Exited (0)`, esperado para tareas de una sola ejecución.
+- **Pendiente de recuperar:** `nagios` figura `Exited (255)` en esta nueva observación. Que hubiera funcionado en una comprobación anterior no sustituye su recuperación actual.
+- `bash scripts/verify.sh > results/baseline-repeticion.txt 2>&1` terminó con **código de salida 0**. El script consulta salud profunda HTTP, estados Galera, estado del replica set MongoDB, Sentinel y nueve respuestas del catálogo. No se aportaron las líneas iniciales del archivo con los **roles y valores específicos actuales**; se recopilarán en la siguiente prueba.
+- Las últimas líneas muestran respuestas **HTTP 200** y distribución real entre `webnode1`, `webnode2`, `webnode3` y `app1`, `app2`, `app3`. Se observó un `redis (cache miss) -> galera-via-proxy -> redis (cache write)` seguido de varios `cache hit`.
+- Puerto externo publicado por `presentation-entry`: `0.0.0.0:80->80/tcp` y `[::]:80->80/tcp`.
+- **Recursos de VM:** partición raíz de 25 GB con aproximadamente 22 GB usados, **1.4 GB disponibles (95 %)**. RAM total 11 GiB, 4.3 GiB usados, 7.0 GiB disponibles. El espacio disponible en disco es el principal límite inmediato para pruebas de carga prolongada.
+
+**Resultado:** prueba general completada correctamente en cuanto al script de verificación (salida 0), comunicación HTTP, balanceo web/API y estados de contenedores. **Aprobación condicionada del laboratorio completo:** Nagios sigue detenido, las VIP deben comprobarse como exclusivas y aún falta confirmar en detalle los roles/quórum actuales a partir del log completo. No se ha ejecutado una nueva prueba de carga ni de failover.
+
+**Siguiente secuencia sin provocar fallos:** inspeccionar el principio de `results/baseline-repeticion.txt` para recopilar Galera/MongoDB/Sentinel, verificar propietario único de las dos VIP y revisar Nagios. **No realizar fallos destructivos ni carga intensiva** hasta atender las advertencias y el espacio del disco.
+
 ### Segunda campaña: mediciones por repetir
 
 | Prueba | Estado de esta segunda campaña | Evidencia pendiente |
 |---|---|---|
-| Salud de los servicios y contenedores | Por repetir y guardar | `scripts/verify.sh`, estado Docker y salud HTTP |
-| Galera, MongoDB y Redis Sentinel | Por repetir y guardar | Estados de clúster, réplica y quorum |
+| Salud de los servicios y contenedores | **Repetida: verify.sh terminó con código 0; Nagios detenido** | `results/baseline-repeticion.txt` en VM; falta aportar inicio del log |
+| Galera, MongoDB y Redis Sentinel | Contenedores saludables y verificación general sin error; **roles exactos por registrar** | Inicio de `results/baseline-repeticion.txt` |
 | VIPs de Keepalived | Por verificar **antes** de inyectar fallos | Una VIP por pareja, no dos propietarios simultáneos |
 | Cliente LAN / compañera | Página accesible según reporte; pruebas instrumentadas pendientes | Solicitudes y capturas desde segundo equipo |
 | Rendimiento desde LAN | Pendiente | Peticiones, fallos, RPS, p95, p99, recursos |
