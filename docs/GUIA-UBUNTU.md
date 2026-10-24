@@ -142,6 +142,29 @@ curl.exe -i --max-time 10 http://IP_UBUNTU/api/products/cheapest
 
 Para las pruebas avanzadas de latencia, rendimiento y fallos, seguir `docs/PRUEBAS.md`: el operador ejecuta los scripts del servidor y el cliente observa. Si una carga se ejecuta **desde la VM**, debe identificarse claramente como **carga local**, nunca como medición desde un cliente externo. Antes de inyectar fallos, comprobar la integridad del clúster y que cada VIP pertenece a un solo Keepalived.
 
+### Acceso privado al panel Nagios desde Windows mediante túnel SSH (sin Docker en cliente)
+
+El panel de Nagios escucha únicamente en `127.0.0.1:8088` del Ubuntu: así **no se publica en la LAN**. El servidor Ubuntu ha confirmado `ssh.service` activo y habilitado, escuchando en TCP/22 sobre IPv4 e IPv6; `ufw` está inactivo. **Aún no hay prueba de conexión desde Windows**, por lo que no se presenta el túnel como completado.
+
+En el **Ubuntu servidor**, si la laptop puede conectarse en la LAN y se requiere una cuenta separada:
+
+```bash
+sudo adduser colaboradora
+# No agregar la cuenta a sudo ni docker.
+# Si desea verificar la huella para la primera conexión:
+ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+```
+
+En el **Windows de la colaboradora**, abrir PowerShell, **no** la terminal Bash de Ubuntu:
+
+```powershell
+Test-NetConnection 192.168.100.29 -Port 22
+# Solo después de confirmar TcpTestSucceeded : True y crear la cuenta:
+ssh -N -L 127.0.0.1:18088:127.0.0.1:8088 colaboradora@192.168.100.29
+```
+
+Verificar la huella SSH frente a la que muestra Ubuntu antes de aceptarla. Mantener abierta esa terminal mientras se use el panel. Abrir **en el navegador de Windows** `http://127.0.0.1:18088/nagios/`. El usuario de la interfaz es `nagiosadmin`, con su credencial propia: **es distinta** de la cuenta SSH. No compartir contraseñas ni añadirlas a GitHub; rotar las credenciales divulgadas. El comando `Test-NetConnection` no existe en Bash: `command not found` en Ubuntu no indica que SSH haya fallado. Si Windows no puede llegar a TCP/22, comprobar la red local de ambos equipos y aislamiento Wi-Fi; no abrir puertos en el router hacia Internet.
+
 ## 8. Subir documentación y resultados
 
 Editen `docs/RESULTADOS.md`, agreguen nombres, recursos reales, IP utilizada y sus mediciones. Compartan resultados por archivos o GitHub; no compartan `.env`, claves ni copias de datos reales. `results/` está excluido de Git: publiquen una selección revisada en `docs/evidencias/`.
