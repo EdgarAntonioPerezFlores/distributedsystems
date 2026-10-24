@@ -23,6 +23,12 @@
 
 Se generó `results/cierre/recursos-baseline.txt` mediante `docker stats --no-stream $(docker compose ps -q)`, con tamaño reportado **5.0 KB**. **El archivo existe en la VM, no en GitHub, y sus porcentajes/consumos concretos no se han recibido**, así que no se atribuyen valores CPU/RAM ni se confunde esta muestra en reposo con uso bajo carga.
 
+### Limpieza selectiva Snap y salud conservada (24-10-2026)
+
+**Origen: salida directa de Ubuntu aportada por el operador.** Se eliminaron correctamente las revisiones **desactivadas** `gnome-46-2404` rev. 153 y `core24` rev. 1643 mediante `sudo snap remove <paquete> --revision=<n>`. **No se tocó la instalación activa de Docker**. Tras esas acciones, `df -h /` sigue mostrando **25 GB totales, 22 GB usados y 1.8 GB disponibles (93 % de ocupación)**; no se observó un incremento visible de espacio disponible en la salida de `df`. `docker compose ps --status running | wc -l` devolvió **34 líneas**, lo que incluye la cabecera de la tabla (aproximadamente 33 filas de contenedores). La salud profunda por HTTP devolvió **`{"sql":true,"mongo":true,"cache":true}`**, indicando que SQL, MongoDB y caché continuaron respondiendo después de la limpieza.
+
+**Decisión operativa:** conservar Galera, MongoDB y Redis intactos. Priorizar ensayo reversible y corto sobre `app1` con sonda y verificación posterior, sin reconstrucción de imágenes ni presión elevada sobre disco; posponer cargas sostenidas, fallos de clústeres de datos y Chaos Monkey hasta ampliar el margen de espacio.
+
 ## Equipo y entorno
 
 - Servidor: Ubuntu en una VM de VirtualBox; Docker Compose, proyecto `distributed-ha-lab`.
