@@ -91,6 +91,8 @@ El arranque de Nagios también mostró verificaciones satisfactorias de dependen
 
 **Pendiente antes de afirmar monitoreo operativo:** estado actual del contenedor, `docker compose logs --tail=80 nagios` y respuesta de `GET http://127.0.0.1:8088/nagios/`. Mantener sin publicar el puerto 8088 a la LAN.
 
+**Seguimiento de Nagios (24-10-2026, 21:16 UTC según cabecera HTTP observada):** una nueva consulta mostró `docker compose ps -a nagios` con `Up 12 minutes` y puerto `127.0.0.1:8088->80/tcp`. Pese a permanecer activo, `curl --noproxy '*' -i --max-time 15 http://127.0.0.1:8088/nagios/` siguió devolviendo `curl: (56) Recv failure: Conexión reinicializada por la máquina remota`. La petición `curl -I http://192.168.100.29/nagios/` obtuvo `HTTP/1.1 404 Not Found` con cabeceras `x-web-node: webnode3` y `x-presentation-lb: presentation-master`, que corresponden al servicio de presentación en el puerto 80, **no** al endpoint de Nagios. El monitoreo no se marca aún como operativo. Pendiente comprobar logs recientes, procesos HTTP dentro del contenedor y conectividad interna frente a la publicación del puerto Docker, sin reiniciar los datos.
+
 ### Segunda campaña: mediciones por repetir
 
 | Prueba | Estado de esta segunda campaña | Evidencia pendiente |
