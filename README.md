@@ -14,7 +14,7 @@ Proyecto académico basado en [tuxtter/distributedsystems](https://github.com/tu
 
 ## Diagrama
 
-<img width="5189" height="4789" alt="Diagrama en blanco" src="https://github.com/user-attachments/assets/2f796f10-6bbe-4dc2-ac00-1765a00ae0f0" />
+<img width="2608" height="5775" alt="Sistema Distribuido" src="https://github.com/user-attachments/assets/0043c952-f851-434e-bf91-643d7b52e6ae" />
 
 
 ## Componentes
