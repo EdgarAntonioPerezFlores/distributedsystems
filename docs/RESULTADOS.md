@@ -59,6 +59,26 @@ Se registró una IP LAN posterior al cambio de Wi-Fi, `192.168.100.29`, diferent
 
 **Siguientes ensayos:** replicación SQL controlada (sin detener nodos), comprobación de Redis master real e investigación/reinicio aislado de Nagios, manteniendo intactos los volúmenes.
 
+### Segunda campaña — Prueba 3: replicación de datos Galera (24-10-2026)
+
+**Objetivo:** demostrar replicación efectiva de una escritura SQL entre los tres miembros, además del estado `Synced` confirmado en la Prueba 2.
+
+**Procedimiento ejecutado desde Ubuntu:**
+
+1. Usando `bash scripts/sql.sh galera1`, se creó la tabla de prueba `lab_consistency (id INT PRIMARY KEY, value VARCHAR(80))`, si no existía, en la base `store`.
+2. Se ejecutó `REPLACE INTO lab_consistency VALUES (1, 'evidencia-replicacion-2')` en `galera1`.
+3. En cada uno de `galera1`, `galera2` y `galera3` se ejecutó `SET SESSION wsrep_sync_wait=1; SELECT * FROM lab_consistency WHERE id=1;` usando el mismo script.
+
+| Nodo consultado | ID | Valor recuperado |
+|---|---:|---|
+| `galera1` | 1 | `evidencia-replicacion-2` |
+| `galera2` | 1 | `evidencia-replicacion-2` |
+| `galera3` | 1 | `evidencia-replicacion-2` |
+
+**Resultado: APROBADA.** La escritura realizada en `galera1` pudo leerse desde los tres nodos mediante consultas con espera causal. Es una verificación concreta de replicación/visibilidad del registro; **no** implica que se hayan medido tiempos de réplica, rendimiento de escritura o tolerancia a la caída de un nodo. La tabla/registro quedan en la base de datos como evidencia de laboratorio.
+
+**Diagnóstico adicional de Nagios:** `docker inspect distributed-ha-lab-nagios-1 --format 'Estado={{.State.Status}} Salida={{.State.ExitCode}} OOM={{.State.OOMKilled}} Error={{.State.Error}}'` devolvió `Estado=exited Salida=255 OOM=false Error=`. El contenedor sigue detenido; Docker no informa terminación por OOM y el campo de error está vacío. **Causa exacta todavía no determinada.** La próxima intervención debe limitarse al monitoreo, preservando los contenedores y los volúmenes de las bases de datos.
+
 ### Segunda campaña: mediciones por repetir
 
 | Prueba | Estado de esta segunda campaña | Evidencia pendiente |
