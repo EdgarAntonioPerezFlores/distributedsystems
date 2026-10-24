@@ -116,41 +116,31 @@ Alternativa NAT: en VirtualBox configura un reenvío **TCP, IP anfitrión = IP L
 
 Se publica únicamente HTTP para las pruebas. Las bases de datos no publican puertos. Nagios y el dashboard quedan en loopback; no abras el dashboard que administra Docker a la LAN. Docker puede eludir reglas UFW para puertos publicados: no supongas que `ufw` por sí solo los restringe. Ejecuta este laboratorio en una red de confianza, sin reenvío en el router hacia Internet.
 
-## 7. Prueba corta inicial de tu compañero
+## 7. Pruebas desde otro equipo sin clonar el repositorio
 
-En Ubuntu/WSL de su equipo:
+La persona colaboradora **no necesita clonar Git ni instalar Docker** para acceder a la aplicación. El operador de la VM mantiene el sistema y los archivos del repositorio; el otro equipo puede comprobar la LAN con navegador y, opcionalmente, PowerShell. Si se desea medir carga externa con herramientas especializadas, se puede instalar JMeter o ApacheBench **sin ejecutar Docker ni duplicar el sistema**. Registrar el método y equipo utilizado.
 
-```bash
-sudo apt update
-sudo apt install -y apache2-utils siege curl git python3
-git clone --branch main https://github.com/EdgarAntonioPerezFlores/distributedsystems.git
-cd distributedsystems
-export BASE=http://192.168.1.80   # cambiar por tu dirección real
-python3 tests/functional.py "$BASE"
-bash tests/load.sh "$BASE" 5 30
+1. Abrir en su navegador `http://IP_UBUNTU/`, `http://IP_UBUNTU/api/health/deep` y `http://IP_UBUNTU/api/products/cheapest`. Sustituir `IP_UBUNTU` por la dirección actual de la VM, verificada con `ip -br -4 addr`.
+2. En Windows PowerShell, comprobar el puerto y la respuesta sin instalar programas:
+
+```powershell
+Test-NetConnection IP_UBUNTU -Port 80
+curl.exe -i --max-time 10 http://IP_UBUNTU/api/health/deep
+curl.exe -i --max-time 10 http://IP_UBUNTU/api/products/cheapest
 ```
 
-En una terminal de tu compañero, para registrar la caída y recuperación:
+3. Para observar balanceo, repetir varias peticiones y guardar los encabezados `x-web-node` y `x-request-trace`. En PowerShell:
 
-```bash
-python3 tests/probe.py "$BASE" --seconds 180 --out results/failover-web1.csv
+```powershell
+1..12 | ForEach-Object {
+  curl.exe -sS -D - -o NUL http://IP_UBUNTU/api/products/cheapest |
+    Select-String 'x-web-node|x-request-trace'
+}
 ```
 
-En otra terminal de su equipo:
+4. Registrar fecha/hora, IP LAN, equipo cliente, ruta, estado HTTP y capturas. Los resultados procedentes de un navegador o `curl.exe` **no se presentan como benchmark** ni sustituyen las métricas de carga.
 
-```bash
-bash tests/load.sh "$BASE" 20 180
-```
-
-Después de unos 30 segundos, **tú en Ubuntu servidor**, desde la carpeta del proyecto:
-
-```bash
-bash scripts/fault.sh stop web1 30
-bash scripts/verify.sh
-bash scripts/collect.sh
-```
-
-El script restaura el servicio al terminar. Las pruebas completas, fallos de bases de datos y cómo interpretar los resultados están en [PRUEBAS.md](PRUEBAS.md).
+Para las pruebas avanzadas de latencia, rendimiento y fallos, seguir `docs/PRUEBAS.md`: el operador ejecuta los scripts del servidor y el cliente observa. Si una carga se ejecuta **desde la VM**, debe identificarse claramente como **carga local**, nunca como medición desde un cliente externo. Antes de inyectar fallos, comprobar la integridad del clúster y que cada VIP pertenece a un solo Keepalived.
 
 ## 8. Subir documentación y resultados
 
