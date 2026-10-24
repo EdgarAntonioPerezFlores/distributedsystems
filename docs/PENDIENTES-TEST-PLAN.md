@@ -81,6 +81,10 @@ El CSV `sonda-fallo-web1.csv` quedó ratificado con **144/145 = 99.31 % de muest
 
 **Queda pendiente:** obtener y revisar los archivos brutos (en VM, fuera de GitHub por `.gitignore`) y añadir un registro de recursos bajo carga; realizar otras pruebas de failover/Chaos, y promediar varios ensayos si se usa el término `MTTD/MTTR` como *mean*.
 
+### Sonda de aplicación `app1` revisada (24-10-2026)
+
+La salida de un nuevo análisis del CSV local informa **90 filas: 89 correctas, 0 fallidas, 1 incompleta**. Las primeras trazas HTTP 200 muestran `app1` y `app2`. Se informó **100 % de disponibilidad entre los registros válidos**, sin clasificar la fila incompleta. **Esto no demuestra que `app1` haya sufrido una caída controlada**; no se localizó `fault-*-app1.log` en el inventario de resultados. Para cerrar el ensayo: inspeccionar la fila incompleta y recuperar evidencia de una inyección real de fallo más la verificación posterior. No repetir sin necesidad antes de evaluar salud/disco (95 % de ocupación).
+
 ## D. Checklist de publicación final
 
 - [x] Código/IaC, arquitectura JPG y documentación base en `main`.
