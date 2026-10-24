@@ -416,7 +416,7 @@ services:
     - application
     - database
   mongo1:
-    image: mongo:8.0
+    image: mongo:7.0.45-jammy
     entrypoint:
     - bash
     - /opt/lab/mongo-entrypoint.sh
@@ -433,7 +433,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?run setup}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?run setup}
     volumes:
-    - mongo1-data:/data/db
+    - mongo7-1-data:/data/db
     - ./secrets/mongo-keyfile:/run/secrets/mongo-keyfile:ro
     - ./ha/mongo-entrypoint.sh:/opt/lab/mongo-entrypoint.sh:ro
     healthcheck:
@@ -451,7 +451,7 @@ services:
     networks:
     - database
   mongo2:
-    image: mongo:8.0
+    image: mongo:7.0.45-jammy
     entrypoint:
     - bash
     - /opt/lab/mongo-entrypoint.sh
@@ -468,7 +468,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?run setup}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?run setup}
     volumes:
-    - mongo2-data:/data/db
+    - mongo7-2-data:/data/db
     - ./secrets/mongo-keyfile:/run/secrets/mongo-keyfile:ro
     - ./ha/mongo-entrypoint.sh:/opt/lab/mongo-entrypoint.sh:ro
     healthcheck:
@@ -486,7 +486,7 @@ services:
     networks:
     - database
   mongo3:
-    image: mongo:8.0
+    image: mongo:7.0.45-jammy
     entrypoint:
     - bash
     - /opt/lab/mongo-entrypoint.sh
@@ -503,7 +503,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?run setup}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?run setup}
     volumes:
-    - mongo3-data:/data/db
+    - mongo7-3-data:/data/db
     - ./secrets/mongo-keyfile:/run/secrets/mongo-keyfile:ro
     - ./ha/mongo-entrypoint.sh:/opt/lab/mongo-entrypoint.sh:ro
     healthcheck:
@@ -521,7 +521,7 @@ services:
     networks:
     - database
   mongo-init:
-    image: mongo:8.0
+    image: mongo:7.0.45-jammy
     entrypoint:
     - bash
     - -ec
@@ -727,6 +727,9 @@ services:
     networks:
     - database
 volumes:
+  mongo7-1-data: null
+  mongo7-2-data: null
+  mongo7-3-data: null
   galera1-data: null
   galera2-data: null
   galera3-data: null
