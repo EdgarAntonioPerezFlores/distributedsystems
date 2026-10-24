@@ -36,7 +36,7 @@
 - **Web y API:** respuestas HTTP 200, distribución observada entre `web1–3` y `app1–3`.
 - **Carga local básica:** 9,107 peticiones / 30 s / concurrencia 5 / **303.56 RPS**, sin fallos reportados por ApacheBench; **no** es una medición desde otra laptop.
 - **Caída reversible de `web1`:** parada programada de 120 s y recuperación; los tres web quedaron `Up` y `verify.sh` regresó código 0. Un ensayo anterior registró 144 respuestas exitosas en 145 muestras de sonda local.
-- **Nagios:** validación de configuración con **0 errores** y 24 advertencias de contactos de hosts; panel autenticado accesible desde Windows mediante túnel SSH. Tres capturas muestran **24 hosts UP → 23 UP / 1 DOWN → 24 UP**, con **30 servicios OK** durante las capturas. **No se documentó un servicio CRITICAL.**
+- **Nagios:** validación de configuración con **0 errores** y 24 advertencias de contactos de hosts; panel autenticado accesible desde Windows mediante túnel SSH. Tres capturas muestran **24 hosts UP → 23 UP / 1 DOWN → 24 UP**, con **30 servicios OK** durante las capturas. **Un registro de Nagios recibido posteriormente sí confirmó `SERVICE ALERT: web1;Website HTTP;CRITICAL;HARD` a las 22:38:56 UTC, seguido de `OK;HARD` a las 22:40:56 UTC; el estado CRITICAL no se ve en las capturas.**
 
 Detalles, salidas y límites: [RESULTADOS.md](RESULTADOS.md) y [evidencias/README.md](evidencias/README.md).
 
@@ -47,7 +47,7 @@ Detalles, salidas y límites: [RESULTADOS.md](RESULTADOS.md) y [evidencias/READM
 2. Si exigen capturas de ejecución además de Nagios, guardar una imagen de la aplicación `http://192.168.100.29/` y otra de la salida final `docker compose ps` / `scripts/verify.sh` sin credenciales.
 3. Revisar el disco de la VM: anteriormente se reportó **95 % de uso**. No borrar volúmenes, ni usar `docker compose down -v`.
 
-**Actualización de alcance por enunciado completo (24-10-2026):** el profesor **sí exige ejecutar los puntos 1 al 5 de [TEST-PLAN](../resilience-lab/TEST-PLAN.md)**, además de entregar diagrama, Markdown y IaC. Por tanto, **el proyecto aún no está concluido en la parte experimental**: faltan carga sostenida/estrés/spike/soak y recursos; failover real de balanceadores y nodos de datos; una ejecución del Chaos Monkey; y métricas de observabilidad como MTTD/MTTR. No se darán por terminados escenarios no ejecutados. Consulta el [checklist exhaustivo de pruebas pendientes](PENDIENTES-TEST-PLAN.md) y los [procedimientos](PRUEBAS.md).
+**Actualización de alcance por enunciado completo (24-10-2026):** el profesor **sí exige ejecutar los puntos 1 al 5 de [TEST-PLAN](../resilience-lab/TEST-PLAN.md)**, además de entregar diagrama, Markdown y IaC. Por tanto, **el proyecto aún no está concluido en la parte experimental**: faltan carga sostenida/estrés/spike/soak y recursos; failover real de balanceadores y nodos de datos; una ejecución del Chaos Monkey; y series repetidas para promediar MTTD/MTTR. **Ya se correlacionaron tiempos de detección y recuperación de un ensayo web1 usando Nagios y `fault.sh`.** No se darán por terminados escenarios no ejecutados. Consulta el [checklist exhaustivo de pruebas pendientes](PENDIENTES-TEST-PLAN.md) y los [procedimientos](PRUEBAS.md).
 
 ## 4. Última comprobación segura antes de entregar
 
