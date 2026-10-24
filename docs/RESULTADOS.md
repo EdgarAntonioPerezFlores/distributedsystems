@@ -12,6 +12,31 @@
 - La prueba de carga inicial se lanzó desde la **propia VM**, no desde un cliente externo.
 - Nagios: tras observarse `Exited (255)`, el estudiante proporcionó una nueva comprobación `docker compose ps -a nagios` con estado **`Up 3 minutes`**. Continúa pendiente documentar interfaz, alertas y MTTD/MTTR.
 
+## Recuperación y nueva campaña de pruebas — 24 de octubre de 2026
+
+Tras problemas de conectividad entre redes Docker, una desinstalación fallida de Docker Snap y el reinicio de la VM, se inspeccionaron los volúmenes existentes antes de recuperar los servicios. Los tres directorios Galera mostraban aproximadamente 284 MB cada uno; los tres volúmenes MongoDB usados por la configuración (`mongo7-1-data`, `mongo7-2-data`, `mongo7-3-data`) mostraban aproximadamente 306 MB cada uno, con archivos WiredTiger presentes. **La presencia de archivos por sí sola no prueba la integridad**, por lo que se verificó posteriormente el estado de los contenedores y las solicitudes HTTP.
+
+La revisión posterior mostró los tres nodos Galera, los tres MongoDB y los tres Redis como `Up (healthy)`. `app1`, `app2` y `app3` se iniciaron con `docker compose start app1 app2 app3`; sus registros posteriores incluyeron `GET /health` con HTTP 200 para las tres API. La solicitud `curl --noproxy '*' -i --max-time 15 http://localhost/api/health/deep` respondió **HTTP 200** y los encabezados `x-request-trace` evidenciaron rutas como `presentation-lb-master -> webnode1 -> application-lb-master -> app2` y `presentation-lb-master -> webnode2 -> application-lb-master -> app1`.
+
+Se registró una IP LAN posterior al cambio de Wi-Fi, `192.168.100.29`, diferente de la IP de las pruebas iniciales (`192.168.1.88`). El responsable reportó que el enlace LAN ya es accesible. **Aún no se ha aportado una ejecución documentada desde la computadora colaboradora**, por lo que no se le atribuyen resultados de carga o disponibilidad externa.
+
+**Advertencias antes de repetir pruebas de fallo:** en un diagnóstico previo se observó asignación simultánea de una VIP a ambos Keepalived de presentación; se debe volver a comprobar la exclusividad de las VIP `172.30.0.250` y `172.31.0.250`. El disco de la VM reportó **95 % de ocupación** (aproximadamente 1.4 GB libres). También se observaron dos procesos `dockerd` (Snap y APT) y un bloqueo AppArmor de señales durante un reinicio anterior. El acceso HTTP recuperado no demuestra que todos esos riesgos hayan desaparecido.
+
+### Segunda campaña: mediciones por repetir
+
+| Prueba | Estado de esta segunda campaña | Evidencia pendiente |
+|---|---|---|
+| Salud de los servicios y contenedores | Por repetir y guardar | `scripts/verify.sh`, estado Docker y salud HTTP |
+| Galera, MongoDB y Redis Sentinel | Por repetir y guardar | Estados de clúster, réplica y quorum |
+| VIPs de Keepalived | Por verificar **antes** de inyectar fallos | Una VIP por pareja, no dos propietarios simultáneos |
+| Cliente LAN / compañera | Página accesible según reporte; pruebas instrumentadas pendientes | Solicitudes y capturas desde segundo equipo |
+| Rendimiento desde LAN | Pendiente | Peticiones, fallos, RPS, p95, p99, recursos |
+| Fallo controlado de `app1` | Pendiente | Sonda continua, recuperación y servicio del resto de API |
+| Failover de HAProxy/Keepalived | Pendiente; condicionado a corregir/verificar VIP | Antes/durante/después de la elección |
+| Nagios | Pendiente de nueva comprobación | Estado, alertas y tiempos de detección/recuperación |
+
+Los valores medidos en la primera campaña se conservan más abajo como evidencias históricas y **no deben copiarse como resultados de esta segunda campaña**.
+
 ## Salud y balanceo observados
 
 La salida de `bash scripts/verify.sh | tee results/baseline.txt` mostró:
