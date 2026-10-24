@@ -138,6 +138,16 @@ La plantilla original `generic-service` de `/opt/nagios/etc/objects/templates.cf
 
 **Persistencia de montaje de configuración Nagios tras `git pull` (24-10-2026):** la salida de `grep -A 7 "service_description     Website HTTP" nagios/architecture.cfg` en Ubuntu ya muestra el servicio `web1` con `check_interval 0.5`, `retry_interval 0.2`, `max_check_attempts 2`. Sin embargo, la consulta idéntica dentro del contenedor `/opt/nagios/etc/objects/localhost.cfg` muestra el antiguo bloque sin esos parámetros; `web2` y `web3` conservan intencionalmente la configuración heredada. Dado que Compose monta `./nagios/architecture.cfg` como archivo individual de solo lectura, **es compatible con la hipótesis de que el contenedor conserve la versión/inodo anterior reemplazado por Git**, sin que todavía se haya verificado la causa exacta del cambio de archivo. La configuración nueva **todavía no está cargada en el Nagios en ejecución**. Se recomienda guardar logs locales, validar Compose y recrear **solo Nagios** con `docker compose up -d --no-deps --force-recreate nagios`, después confirmar su archivo montado, ejecutar `nagios -v` y comprobar HTTP 401/autenticación. **Ese recreado aún no se ha ejecutado ni se ha medido una nueva alerta `CRITICAL`.**
 
+### Aplicación verificada de monitoreo rápido web1 en Nagios (24-10-2026)
+
+**Origen:** salida entregada desde Ubuntu tras actualizar `main`. Antes de recrear el contenedor, el responsable guardó `results/nagios-antes-recreacion.log` y `results/nagios-historial-antes.log`, ambos locales y sin publicación todavía. `docker compose config --quiet` terminó sin errores y `docker compose up -d --no-deps --force-recreate nagios` **recreó solamente Nagios** (informó `Started`); `docker compose ps -a nagios` devolvió `Up 8 seconds` con publicación `127.0.0.1:8088->80/tcp`.
+
+La consulta dentro del nuevo contenedor a `/opt/nagios/etc/objects/localhost.cfg` confirma que **el servicio `Website HTTP` de `web1` ahora incluye** `check_interval=0.5` min (30 s), `retry_interval=0.2` min (12 s) y `max_check_attempts=2`. `web2` y `web3` conservan intencionalmente sus comprobaciones heredadas.
+
+Se ejecutó la validación interna `/opt/nagios/bin/nagios -v /opt/nagios/etc/nagios.cfg` con **Nagios Core 4.5.12**, **30 servicios**, **24 hosts**, **24 advertencias** por hosts sin contactos/contactgroups predeterminados y **0 errores**. El resultado fue `Things look okay - No serious problems were detected during the pre-flight check`. Las advertencias se anotan como trabajo de configuración de notificaciones de hosts pendiente; **no bloquean las comprobaciones de estado actuales**.
+
+Finalmente, `curl --noproxy '*' -I --max-time 10 http://127.0.0.1:8088/nagios/` respondió **`HTTP/1.1 401 Unauthorized`**, `Server: Apache/2.4.58 (Ubuntu)`, `WWW-Authenticate: Basic realm="Nagios Access"`. **Resultado: configuración de monitoreo rápido montada, validada y endpoint Apache con autenticación operativo.** La aparición de `CRITICAL` y posterior `OK` por caída reversible de `web1` aún **no se ha ejecutado bajo esta configuración nueva**; requiere comprobar recursos y recopilar las alertas observadas desde la laptop Windows.
+
 ### Segunda campaña: mediciones por repetir
 
 | Prueba | Estado de esta segunda campaña | Evidencia pendiente |
