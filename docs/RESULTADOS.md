@@ -120,6 +120,14 @@ En las filas visibles se muestran estados `OK` para `app1`–`app3` (HTTP de apl
 
 **Siguiente experimento propuesto, aún no ejecutado:** fallo reversible de un nodo web redundante, con supervisión de Nagios desde Windows, captura de alerta `CRITICAL` y de recuperación `OK`, manteniendo el catálogo accesible. Preparar condiciones de espacio/servicios primero: la VM había informado 95 % de disco usado. Los estados `WARNING` y `UNKNOWN` son resultados de checks según umbrales o errores de comprobación; para mostrarlos sin confundirlos con fallas reales se puede crear después un servicio de prueba explícitamente simulado usando un plugin de Nagios. No marcar ninguna de esas transiciones como realizada hasta recibir evidencia.
 
+### Segunda campaña — Ensayo reversible de caída de `web1` y observación de Nagios (24-10-2026)
+
+**Evidencia enviada desde Ubuntu:** `bash scripts/fault.sh stop web1 120` reportó `2026-10-24T22:14:22Z` antes de detener `web1`, y `2026-10-24T22:16:25Z` al solicitar su recuperación. `docker compose ps web1 web2 web3` mostró los tres servicios `Up` después del ensayo; `bash scripts/verify.sh > results/verificacion-web1-nueva.txt 2>&1` devolvió **código de salida 0**. Durante `docker compose start web1`, Compose también comprobó Galera/MongoDB y volvió a ejecutar `mongo-init` y `catalog-init`, ambos terminados correctamente; ello es relevante al analizar transitorios y no debe atribuirse automáticamente al corte web.
+
+**Observación de la compañera/operador:** *«no se reflejó nada en Nagios»*. No se recibió captura del panel durante la parada ni el registro histórico de checks del intervalo: **NO se afirma que Nagios haya detectado el fallo**. La recuperación del nodo y la aprobación del script `verify.sh` **sí** quedan verificadas, pero tampoco se midió disponibilidad por petición durante la parada. Posible explicación por comprobar: `Website HTTP` de `web1` hereda `generic-service` sin `check_interval`/`retry_interval` propios; si su frecuencia efectiva excede la duración del fallo (120 s), es posible que no haya llegado a ejecutarse una comprobación mientras `web1` estaba detenido. El panel **Current Status** muestra estados actuales y puede volver a `OK` después de recuperarse un nodo; consultar historial de alertas y registros antes de decidir.
+
+**Pendiente de diagnóstico antes de modificar o repetir:** consultar `docker compose logs --since='2026-10-24T22:13:00Z' --until='2026-10-24T22:20:00Z' nagios` filtrando `web1`, inspeccionar la plantilla `generic-service` en `/opt/nagios/etc/objects/templates.cfg` y confirmar si las comprobaciones están activas. De resultar necesario, establecer para la comprobación de laboratorio de `web1` intervalos específicos breves, validar `nagios -v` y recargar solo Nagios antes de un nuevo fallo, siempre con la VM sana y disco suficiente. **No hay nueva alerta `CRITICAL` documentada para este ensayo.**
+
 ### Segunda campaña: mediciones por repetir
 
 | Prueba | Estado de esta segunda campaña | Evidencia pendiente |
@@ -132,7 +140,7 @@ En las filas visibles se muestran estados `OK` para `app1`–`app3` (HTTP de apl
 | Rendimiento desde LAN | Pendiente | Peticiones, fallos, RPS, p95, p99, recursos |
 | Fallo controlado de `app1` | Pendiente | Sonda continua, recuperación y servicio del resto de API |
 | Failover de HAProxy/Keepalived | Pendiente; condicionado a corregir/verificar VIP | Antes/durante/después de la elección |
-| Nagios | **Panel confirmado desde Windows: 24 hosts UP y 30 servicios OK** | Alertas de fallo y recuperación aún pendientes |
+| Nagios | **Panel confirmado desde Windows; sin cambio visual reportado durante paro `web1` de 120 s** | Revisar historial/periodicidad; alerta CRITICAL todavía no demostrada |
 
 Los valores medidos en la primera campaña se conservan más abajo como evidencias históricas y **no deben copiarse como resultados de esta segunda campaña**.
 
