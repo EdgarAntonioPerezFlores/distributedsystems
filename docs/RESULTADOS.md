@@ -105,6 +105,21 @@ El arranque de Nagios también mostró verificaciones satisfactorias de dependen
 
 **Verificación de acceso de la colaboradora desde Windows (confirmación posterior):** el responsable confirmó que su compañera **ya pudo visualizar Nagios desde su laptop Windows** tras configurar OpenSSH en Ubuntu y seguir el procedimiento de túnel SSH local a `127.0.0.1:8088`. **Resultado: acceso remoto privado al panel comprobado por reporte del usuario.** No se aportaron todavía captura del panel, resultado de inicio de sesión detallado, estados actuales de los servicios desde Windows ni evidencias cuantitativas de alerta y recuperación durante un fallo. No se infiere que se haya abierto `192.168.100.29:8088` en la LAN; el acceso previsto sigue siendo a través del túnel SSH. Pendiente documentar capturas sin credenciales y ensayar alertas controladas.
 
+### Segunda campaña — Evidencia del panel Nagios en laptop Windows (24-10-2026)
+
+**Origen:** captura de pantalla aportada por el estudiante de la vista **Service Status Details For All Hosts** de Nagios Core, accesible mediante túnel SSH desde Windows. En la captura se observa el resumen de estado del monitoreo y la tabla de servicios. La imagen está compartida en la conversación, pero **el archivo PNG todavía no se ha incorporado al repositorio**.
+
+| Estado de Nagios en la captura | Conteo |
+|---|---:|
+| Hosts **UP** | **24** |
+| Hosts DOWN / UNREACHABLE / PENDING | **0 / 0 / 0** |
+| Servicios **OK** | **30** |
+| Servicios WARNING / UNKNOWN / CRITICAL / PENDING | **0 / 0 / 0 / 0** |
+
+En las filas visibles se muestran estados `OK` para `app1`–`app3` (HTTP de aplicación y verificación de dependencias), balanceadores de aplicación y presentación, `db-proxy1/2`, `galera1/2/3`, `mongo1/2/3`, `redis1/2/3`, `sentinel1/2/3` y `web1/2/3`. La captura confirma que el panel presentó **24 hosts accesibles y 30 comprobaciones de servicio en OK**, sin alertas abiertas en ese momento; **no** demuestra que una alerta crítica se haya generado ni que se haya medido su tiempo de detección/recuperación.
+
+**Siguiente experimento propuesto, aún no ejecutado:** fallo reversible de un nodo web redundante, con supervisión de Nagios desde Windows, captura de alerta `CRITICAL` y de recuperación `OK`, manteniendo el catálogo accesible. Preparar condiciones de espacio/servicios primero: la VM había informado 95 % de disco usado. Los estados `WARNING` y `UNKNOWN` son resultados de checks según umbrales o errores de comprobación; para mostrarlos sin confundirlos con fallas reales se puede crear después un servicio de prueba explícitamente simulado usando un plugin de Nagios. No marcar ninguna de esas transiciones como realizada hasta recibir evidencia.
+
 ### Segunda campaña: mediciones por repetir
 
 | Prueba | Estado de esta segunda campaña | Evidencia pendiente |
@@ -117,7 +132,7 @@ El arranque de Nagios también mostró verificaciones satisfactorias de dependen
 | Rendimiento desde LAN | Pendiente | Peticiones, fallos, RPS, p95, p99, recursos |
 | Fallo controlado de `app1` | Pendiente | Sonda continua, recuperación y servicio del resto de API |
 | Failover de HAProxy/Keepalived | Pendiente; condicionado a corregir/verificar VIP | Antes/durante/después de la elección |
-| Nagios | **Apache/HTTP recuperado; colaboradora confirmó que ve el panel desde Windows por SSH** | Captura sin secretos, estados actuales y alertas de fallos pendientes |
+| Nagios | **Panel confirmado desde Windows: 24 hosts UP y 30 servicios OK** | Alertas de fallo y recuperación aún pendientes |
 
 Los valores medidos en la primera campaña se conservan más abajo como evidencias históricas y **no deben copiarse como resultados de esta segunda campaña**.
 
