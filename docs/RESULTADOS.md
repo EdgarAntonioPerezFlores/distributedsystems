@@ -289,6 +289,12 @@ El operador procesó `results/sonda-fallo-app1.csv` localmente. El archivo tiene
 
 Las tres primeras filas consultadas incluyen trazas a `app1` y `app2` con HTTP 200 (por ejemplo a las 16:18:41Z, 16:18:44Z y 16:18:45Z). Esto prueba respuestas satisfactorias en esa ventana, **no demuestra que se haya detenido un nodo**. El inventario de `results/` no incluyó un `fault-*-app1.log` que permita correlacionar una inyección. Aún debe inspeccionarse el registro incompleto y corroborarse si existió un fallo real de `app1`. No marcar este componente como failover aprobado sin esa correlación.
 
+### Sonda de las tres API: fila vacía y distribución observada (24-10-2026)
+
+La revisión adicional de `results/sonda-fallo-app1.csv` identificó la fila 91 con campos vacíos (sin fecha, estado HTTP, error ni datos extra). El archivo tiene **90 filas leídas, pero únicamente 89 muestras evaluables**, todas con `ok=True`; no se observó `ok=False`. Entre las **89 muestras válidas, disponibilidad muestreada de 100 %**, sin computar la fila en blanco como solicitud HTTP fallida. Las trazas registraron **`app1=32`, `app2=44`, `app3=13`**, sumando 89 peticiones: evidencia de distribución de solicitudes entre las tres API.
+
+**Límite:** el nombre del CSV no es prueba de que se haya apagado `app1`; no aparece un `results/fault-*-app1.log` en el inventario. **Sigue pendiente probar el failover de la API** con inicio/fin del fallo, sonda simultánea y recuperación documentada. El disco sigue en **95 % (1.3 GB libres)**, de modo que se prioriza revisar espacio y guardar una muestra pequeña de recursos sin inyectar fallos.
+
 ## Registro de cada fallo
 
 Copiar esta ficha por escenario y añadir ruta de evidencia:
