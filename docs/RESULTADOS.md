@@ -283,6 +283,12 @@ Ejecutada en el servidor VM con `bash tests/load.sh "http://192.168.1.88" 5 30` 
 | Chaos Monkey, red, recursos | Escenarios controlados | — | — | — | — | Pendiente | No ejecutado |
 | Nagios / alertas / recuperación | Fallo web1 de 120 s + registros UTC | — | — | DOWN SOFT +6 s; CRITICAL HARD +14 s; DOWN HARD +48 s; UP/OK +134 s | — | `results/fault-20261024T223842Z-web1.log` y Nagios (VM) | **Un ensayo correlacionado; falta publicar logs** |
 
+### Revisión de sonda `app1` (24-10-2026; revisión parcial de CSV)
+
+El operador procesó `results/sonda-fallo-app1.csv` localmente. El archivo tiene las columnas `utc,status,ms,ok,trace,error` y **90 registros**, con **89 `ok=True`**, **0 `ok=False`** y **1 registro sin valor válido en `ok`**. **La disponibilidad del 100 % se refiere exclusivamente a las 89 filas válidas**, no a las 90 registradas.
+
+Las tres primeras filas consultadas incluyen trazas a `app1` y `app2` con HTTP 200 (por ejemplo a las 16:18:41Z, 16:18:44Z y 16:18:45Z). Esto prueba respuestas satisfactorias en esa ventana, **no demuestra que se haya detenido un nodo**. El inventario de `results/` no incluyó un `fault-*-app1.log` que permita correlacionar una inyección. Aún debe inspeccionarse el registro incompleto y corroborarse si existió un fallo real de `app1`. No marcar este componente como failover aprobado sin esa correlación.
+
 ## Registro de cada fallo
 
 Copiar esta ficha por escenario y añadir ruta de evidencia:
