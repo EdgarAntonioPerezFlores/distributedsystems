@@ -15,6 +15,14 @@
 
 **Decisión:** no iniciar pruebas de estrés, inyecciones sobre Galera/MongoDB/Redis ni crear imágenes del Chaos Monkey mientras el disco siga al 95 %. **Inspeccionar primero**, sin borrados automáticos, `docker info --format '{{.DockerRootDir}}'`, `sudo du -xhd1 /var /home 2>/dev/null | sort -h | tail -n 25` y `sudo journalctl --disk-usage`. No ejecutar `docker system prune --volumes`, `docker compose down -v` ni borrar volúmenes. Después de asegurar espacio y preservar evidencia, continuar pruebas restantes del [checklist](PENDIENTES-TEST-PLAN.md).
 
+### Inventario Snap y evidencia basal de CPU/RAM (24-10-2026, 18:46 hora local)
+
+**Comprobación adicional facilitada por el operador, sin alterar los servicios:** la caché de APT ya fue limpiada y el sistema reportó **25 GB de capacidad, 22 GB ocupados, 1.8 GB libres (93 %)**. Se confirmó que Docker actualmente utiliza `/var/snap/docker/common/var-lib-docker`, con **8.7 GB** de datos, y que los paquetes Snap ocupan **2.6 GB** en `/var/lib/snapd/snaps`; la caché de snapd ocupa aproximadamente 4 KB.
+
+`snap list --all` muestra **Docker revisión 3618 activa** y **revisión 3613 desactivada**, que **no se deben tocar** al limpiar. Revisiones desactivadas de otros snaps: `core24 1643`, `desktop-security-center 188`, `gnome-46-2404 153`, `prompting-client 222` y `snap-store 1367`. La retirada selectiva de revisiones desactivadas no Docker puede estudiarse para liberar espacio con `snap remove <nombre> --revision=<número>`; **no se ejecutó ninguna retirada en el entorno del estudiante en esta observación**.
+
+Se generó `results/cierre/recursos-baseline.txt` mediante `docker stats --no-stream $(docker compose ps -q)`, con tamaño reportado **5.0 KB**. **El archivo existe en la VM, no en GitHub, y sus porcentajes/consumos concretos no se han recibido**, así que no se atribuyen valores CPU/RAM ni se confunde esta muestra en reposo con uso bajo carga.
+
 ## Equipo y entorno
 
 - Servidor: Ubuntu en una VM de VirtualBox; Docker Compose, proyecto `distributed-ha-lab`.
