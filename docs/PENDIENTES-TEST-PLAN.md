@@ -58,6 +58,21 @@ Si hay problemas de capacidad o salud, **no cargar ni inyectar fallos**. No ejec
 
 **Si el profesor interpreta «puntos 1 a 5» literalmente como *todos* los casos del TEST-PLAN**, faltan también los escenarios de estrés extremo, soak largo y fallos de red/recursos/compuestos. No deben declararse finalizados mediante un solo experimento. Se recomienda priorizar el conjunto seguro, informar al profesor las limitaciones de VM y documentar por separado el alcance efectivamente cubierto.
 
+### Inventario recuperado en Ubuntu el 24-10-2026 (aún no revisado íntegramente)
+
+El operador ejecutó `find results -maxdepth 3 -type f | sort` en su VM y confirmó que **los archivos siguientes existen localmente** pese al cambio anterior de IP:
+
+- Rendimiento: `results/ab-20261024T153524Z-c5/{ab.txt,health.json,percentiles.csv,run.txt,times.tsv}`.
+- Baseline: `results/baseline.txt`, `results/baseline-servidor.txt`, `results/baseline-repeticion.txt`.
+- Inyección `web1`: `results/fault-20261024T155743Z-web1.log`, `results/fault-20261024T221422Z-web1.log`, `results/fault-20261024T223842Z-web1.log`.
+- Sondas: `results/sonda-fallo-web1.csv`, **`results/sonda-fallo-app1.csv`**.
+- Nagios: `results/nagios-antes-recreacion.log`, `results/nagios-historial-antes.log`.
+- Verificación posterior: `results/verification-after-web1.txt`, `results/verificacion-web1-nueva.txt`, `results/verificacion-web1-final.txt`.
+
+**Importante:** esta es una confirmación de presencia por nombre, **no una auditoría del contenido**. En particular, existe una sonda de `app1`, **pero no se encontró ningún `fault-*-app1.log`**: no se puede declarar una inyección de fallo de API sin otra evidencia. Tampoco aparecen todavía en este inventario logs de CPU/RAM bajo carga ni resultados de Chaos Monkey. Los registros históricos de Nagios guardados antes de recrearlo no necesariamente incluyen el evento posterior de caída de `web1` cerca de las 22:38 UTC; revisar el log actual y/o los archivos archivados del contenedor. El disco continúa en **95 % de uso y 1.3 GB libres**; no lanzar cargas prolongadas ni construir nuevas imágenes antes de resolverlo.
+
+**Acción próxima sin alterar servicios:** obtener un resumen de los dos CSV de sonda, de las marcas UTC de los `fault-web1.log`, de los percentiles AB y de alertas Nagios actuales; si se publican los archivos, inspeccionar para eliminar contraseñas o datos personales y dejar claro que son evidencias previas al cambio de IP.
+
 ## D. Checklist de publicación final
 
 - [x] Código/IaC, arquitectura JPG y documentación base en `main`.
