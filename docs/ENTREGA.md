@@ -47,7 +47,7 @@ Detalles, salidas y límites: [RESULTADOS.md](RESULTADOS.md) y [evidencias/READM
 2. Si exigen capturas de ejecución además de Nagios, guardar una imagen de la aplicación `http://192.168.100.29/` y otra de la salida final `docker compose ps` / `scripts/verify.sh` sin credenciales.
 3. Revisar el disco de la VM: anteriormente se reportó **95 % de uso**. No borrar volúmenes, ni usar `docker compose down -v`.
 
-**Si además se evalúan los cinco puntos completos de [TEST-PLAN](../resilience-lab/TEST-PLAN.md):** todavía faltan resultados instrumentados **desde el equipo Windows** (carga sostenida, estrés, spike, soak y recursos), failover real de balanceadores y nodos de datos, experimentos de caos, y métricas de detección/recuperación (MTTD/MTTR). Existen [procedimientos](PRUEBAS.md), pero **no se marcarán como ejecutados**. Esta batería ampliada va más allá de los tres entregables de archivos descritos en el enunciado recibido.
+**Actualización de alcance por enunciado completo (24-10-2026):** el profesor **sí exige ejecutar los puntos 1 al 5 de [TEST-PLAN](../resilience-lab/TEST-PLAN.md)**, además de entregar diagrama, Markdown y IaC. Por tanto, **el proyecto aún no está concluido en la parte experimental**: faltan carga sostenida/estrés/spike/soak y recursos; failover real de balanceadores y nodos de datos; una ejecución del Chaos Monkey; y métricas de observabilidad como MTTD/MTTR. No se darán por terminados escenarios no ejecutados. Consulta el [checklist exhaustivo de pruebas pendientes](PENDIENTES-TEST-PLAN.md) y los [procedimientos](PRUEBAS.md).
 
 ## 4. Última comprobación segura antes de entregar
 
