@@ -28,27 +28,49 @@ Se registró una IP LAN posterior al cambio de Wi-Fi, `192.168.100.29`, diferent
 
 - `docker compose ps -a`: `app1`, `app2`, `app3`, los tres Nginx, HAProxy, Keepalived, los proxies SQL y Sentinel figuran `Up`. Galera 1–3, MongoDB 1–3 y Redis 1–3 figuran `Up (healthy)`. Los trabajos de inicialización `mongo-init` y `catalog-init` están `Exited (0)`, esperado para tareas de una sola ejecución.
 - **Pendiente de recuperar:** `nagios` figura `Exited (255)` en esta nueva observación. Que hubiera funcionado en una comprobación anterior no sustituye su recuperación actual.
-- `bash scripts/verify.sh > results/baseline-repeticion.txt 2>&1` terminó con **código de salida 0**. El script consulta salud profunda HTTP, estados Galera, estado del replica set MongoDB, Sentinel y nueve respuestas del catálogo. No se aportaron las líneas iniciales del archivo con los **roles y valores específicos actuales**; se recopilarán en la siguiente prueba.
+- `bash scripts/verify.sh > results/baseline-repeticion.txt 2>&1` terminó con **código de salida 0**. El script consulta salud profunda HTTP, estados Galera, estado del replica set MongoDB, Sentinel y nueve respuestas del catálogo. En un segundo envío se aportaron los estados específicos de Galera, MongoDB y Sentinel, registrados como Prueba 2.
 - Las últimas líneas muestran respuestas **HTTP 200** y distribución real entre `webnode1`, `webnode2`, `webnode3` y `app1`, `app2`, `app3`. Se observó un `redis (cache miss) -> galera-via-proxy -> redis (cache write)` seguido de varios `cache hit`.
 - Puerto externo publicado por `presentation-entry`: `0.0.0.0:80->80/tcp` y `[::]:80->80/tcp`.
 - **Recursos de VM:** partición raíz de 25 GB con aproximadamente 22 GB usados, **1.4 GB disponibles (95 %)**. RAM total 11 GiB, 4.3 GiB usados, 7.0 GiB disponibles. El espacio disponible en disco es el principal límite inmediato para pruebas de carga prolongada.
 
-**Resultado:** prueba general completada correctamente en cuanto al script de verificación (salida 0), comunicación HTTP, balanceo web/API y estados de contenedores. **Aprobación condicionada del laboratorio completo:** Nagios sigue detenido, las VIP deben comprobarse como exclusivas y aún falta confirmar en detalle los roles/quórum actuales a partir del log completo. No se ha ejecutado una nueva prueba de carga ni de failover.
+**Resultado:** prueba general completada correctamente en cuanto al script de verificación (salida 0), comunicación HTTP, balanceo web/API y estados de contenedores. **Aprobación condicionada del laboratorio completo:** Nagios sigue detenido; las VIP y los roles/quórum quedaron confirmados posteriormente (Prueba 2), pero siguen pendientes las pruebas de conmutación y el mantenimiento del disco. No se ha ejecutado una nueva prueba de carga ni de failover.
 
-**Siguiente secuencia sin provocar fallos:** inspeccionar el principio de `results/baseline-repeticion.txt` para recopilar Galera/MongoDB/Sentinel, verificar propietario único de las dos VIP y revisar Nagios. **No realizar fallos destructivos ni carga intensiva** hasta atender las advertencias y el espacio del disco.
+**Siguiente secuencia sin provocar fallos:** una vez comprobados los estados del clúster y propietario único de las VIP (Prueba 2), verificar replicación y revisar la detención de Nagios. **No realizar fallos destructivos ni carga intensiva** hasta atender las advertencias y el espacio del disco.
+
+### Segunda campaña — Prueba 2: clústeres, quórum y VIPs (24-10-2026)
+
+**Origen:** líneas 35–125 de `results/baseline-repeticion.txt` y consulta `ip -4 -o addr show dev eth0` de los cuatro contenedores Keepalived; registros históricos `docker compose logs --tail=30 nagios`. Datos aportados por el responsable desde Ubuntu; **sin reinicios ni inyección de fallos en esta prueba**.
+
+| Componente | Evidencia observada | Resultado |
+|---|---|---|
+| Galera 1–3 | En los tres: `wsrep_local_state_comment=Synced`, `wsrep_cluster_size=3`, `wsrep_cluster_status=Primary`, `wsrep_ready=ON` | Salud del clúster **aprobada** |
+| MongoDB | `mongo3` PRIMARY, `mongo1` y `mongo2` SECONDARY; todos `health: 1` | Topología de réplica **aprobada** |
+| Sentinel 1–3 | Los tres anuncian `172.28.0.23:6379` y `OK 3 usable Sentinels. Quorum and failover authorization can be reached` | Consenso/quórum **aprobado** |
+| VIP presentación `172.30.0.250/24` | Presente solo en `presentation-keepalived-master` (IP base `172.30.0.11`); ausente en backup (IP `172.30.0.12`) | Propietario único **comprobado** |
+| VIP aplicación `172.31.0.250/24` | Presente solo en `application-keepalived-master` (IP base `172.31.0.11`); ausente en backup (IP `172.31.0.12`) | Propietario único **comprobado** |
+| Salud profunda | `{"sql":true,"mongo":true,"cache":true}` | API responde correctamente |
+| Balanceo | Solicitudes HTTP 200 observadas entre `webnode1/2/3` y `app1/2/3` | Evidencia del reparto de solicitudes |
+
+**Interpretación:** en esta muestra no existe asignación simultánea de VIP entre master y backup (problema observado en un diagnóstico anterior). Esto **no prueba todavía** que las VIP cambien de propietario cuando falla un HAProxy; la conmutación y su tiempo de recuperación continúan pendientes.
+
+**Nagios:** el último estado aportado de `docker compose ps -a` es `Exited (255)`. Sus registros anteriores incluyen alertas `CRITICAL`/`OK` de `app1`, `app2`, `app3`, `web1`, `galera3` y `application-lb-master`; se observan transiciones `SOFT` y `HARD` y notificaciones generadas por Nagios/Postfix. La entrega local de correo a `nagios@localhost` **no equivale a demostrar un email recibido por el equipo**. Los mensajes muestran monitoreo previo, pero no explican la salida `255` ni demuestran monitoreo activo ahora. Hace falta inspeccionar el estado del contenedor, recuperarlo si es seguro y registrar observaciones actuales.
+
+**Riesgos abiertos:** disco de la VM al 95 % (~1.4 GB libres), coexistencia previa de dos procesos Docker y reinicios problemáticos en AppArmor. Para futuras pruebas de carga/fallos, registrar espacio antes/después, confirmar todas las dependencias y detenerse ante nuevas respuestas 503.
+
+**Siguientes ensayos:** replicación SQL controlada (sin detener nodos), comprobación de Redis master real e investigación/reinicio aislado de Nagios, manteniendo intactos los volúmenes.
 
 ### Segunda campaña: mediciones por repetir
 
 | Prueba | Estado de esta segunda campaña | Evidencia pendiente |
 |---|---|---|
-| Salud de los servicios y contenedores | **Repetida: verify.sh terminó con código 0; Nagios detenido** | `results/baseline-repeticion.txt` en VM; falta aportar inicio del log |
-| Galera, MongoDB y Redis Sentinel | Contenedores saludables y verificación general sin error; **roles exactos por registrar** | Inicio de `results/baseline-repeticion.txt` |
-| VIPs de Keepalived | Por verificar **antes** de inyectar fallos | Una VIP por pareja, no dos propietarios simultáneos |
+| Salud de los servicios y contenedores | **Repetida: verify.sh terminó con código 0; Nagios detenido** | `results/baseline-repeticion.txt` en VM; log parcialmente compartido |
+| Galera, MongoDB y Redis Sentinel | **Comprobados:** Galera Synced/Primary/3, Mongo 1 PRIMARY + 2 SECONDARY, Sentinel quorum 3 | Líneas 35–125 de `results/baseline-repeticion.txt` |
+| VIPs de Keepalived | **Comprobadas:** propietario único en cada master | Salida de `ip -4 -o addr show dev eth0` en las cuatro instancias |
 | Cliente LAN / compañera | Página accesible según reporte; pruebas instrumentadas pendientes | Solicitudes y capturas desde segundo equipo |
 | Rendimiento desde LAN | Pendiente | Peticiones, fallos, RPS, p95, p99, recursos |
 | Fallo controlado de `app1` | Pendiente | Sonda continua, recuperación y servicio del resto de API |
 | Failover de HAProxy/Keepalived | Pendiente; condicionado a corregir/verificar VIP | Antes/durante/después de la elección |
-| Nagios | Pendiente de nueva comprobación | Estado, alertas y tiempos de detección/recuperación |
+| Nagios | Historial de alertas CRITICAL/OK; actualmente detenido (`Exited 255`) | Diagnóstico de salida, reactivación y monitoreo actual pendientes |
 
 Los valores medidos en la primera campaña se conservan más abajo como evidencias históricas y **no deben copiarse como resultados de esta segunda campaña**.
 
