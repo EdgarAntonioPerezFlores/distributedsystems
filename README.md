@@ -2,7 +2,7 @@
 
 Proyecto académico basado en [tuxtter/distributedsystems](https://github.com/tuxtter/distributedsystems), con mejoras de MongoDB, Redis y acceso a Galera. El servidor corre en Ubuntu dentro de VirtualBox; el compañero genera tráfico desde otra computadora.
 
-**Estado (24 de octubre de 2026):** despliegue comprobado en Ubuntu/VirtualBox: clústeres y balanceo verificados, prueba de carga local (9,107 solicitudes) y ensayo controlado de caída de `web1` registrados en [RESULTADOS.md](docs/RESULTADOS.md). Después de una interrupción de Docker, las tres API volvieron a responder HTTP 200 y el responsable del servidor confirmó acceso a la página por LAN. **Continúan pendientes** las nuevas mediciones externas, el failover de los balanceadores, el análisis de monitoreo y las pruebas de otros fallos. Es un laboratorio en una VM, no un despliegue de producción.
+**Estado de entrega (24 de octubre de 2026):** los tres entregables base (**diagrama JPG, documentación Markdown y configuraciones/IaC**) están incorporados en `main`. Se verificaron 3 Galera, 3 MongoDB, quórum Redis Sentinel, balanceo web/API, replicación SQL, pruebas funcionales, carga local y recuperación de `web1`. **Nagios ya tiene tres capturas reales** (24 hosts UP → 23 UP/1 DOWN → 24 UP, 30 servicios OK). Quedan pendientes las pruebas de carga externa, failover completo y Chaos Engineering del plan ampliado; no son resultados que deban darse por hechos. Todo corre en una VM, no en producción. **[Consulta primero el resumen de entrega](docs/ENTREGA.md).**
 
 ## Empieza aquí
 
@@ -10,11 +10,14 @@ Proyecto académico basado en [tuxtter/distributedsystems](https://github.com/tu
 2. [Arquitectura y decisiones, con trazabilidad ToDo 2.1–2.3 y todo el punto 3](docs/ARQUITECTURA.md).
 3. [Pruebas paso a paso: TEST-PLAN puntos 1–5](docs/PRUEBAS.md).
 4. [Operación, backup y recuperación](docs/OPERACION.md).
-5. [Plantilla de resultados para completar con mediciones](docs/RESULTADOS.md).
+5. [Resultados observados, con evidencias y pendientes](docs/RESULTADOS.md).
+6. **[Resumen listo para la entrega y lo que falta](docs/ENTREGA.md).**
 
 ## Diagrama
 
-<img width="2608" height="5775" alt="Sistema Distribuido" src="https://github.com/user-attachments/assets/0043c952-f851-434e-bf91-643d7b52e6ae" />
+![Diagrama de arquitectura del sistema distribuido](docs/arquitectura.jpg)
+
+[Ver el JPG directamente](docs/arquitectura.jpg) · [Capturas reales de Nagios](docs/evidencias/README.md)
 
 
 ## Componentes
@@ -61,7 +64,9 @@ En pruebas de Galera usa `/api/products/cheapest?nocache=1` para no ocultar el f
 - Markdown de arquitectura, guía de red, operación y pruebas.
 - `docker-compose.yml`, Dockerfiles, configuraciones HAProxy/Keepalived/MongoDB/Redis y cambios de API.
 - Scripts de pruebas remotas, JMeter `.jmx`, fallos y evidencias.
-- `docs/RESULTADOS.md`: completar nombres, recursos, reportes reales y conclusiones antes de entregar.
+- [Resumen de entrega](docs/ENTREGA.md) con referencias a las pruebas realizadas y pendientes.
+- [Galería de Nagios](docs/evidencias/README.md): tres PNG publicados y documentados.
+- `docs/RESULTADOS.md`: confirmar nombres/recursos/mediciones de la VM antes de presentar la entrega.
 
 ## Limitación fundamental
 
