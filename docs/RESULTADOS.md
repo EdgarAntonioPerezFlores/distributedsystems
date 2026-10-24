@@ -103,6 +103,8 @@ El arranque de Nagios también mostró verificaciones satisfactorias de dependen
 
 **Acceso SSH para colaboradora Windows (24-10-2026):** en la VM Ubuntu se instaló/habilitó `openssh-server`; `sudo systemctl enable --now ssh` terminó correctamente, y `systemctl status ssh` confirmó **`Active: active (running)`**, `enabled`, proceso `sshd` PID `233490` y listeners `0.0.0.0:22` y `[::]:22`. `sudo ss -lntp | grep ':22 '` confirmó los sockets. `sudo ufw status` devolvió `Estado: inactivo`. Se intentó ejecutar `Test-NetConnection 192.168.100.29 -Port 22` en la terminal Ubuntu y devolvió `no se encontró la orden`, porque **esa instrucción corresponde a PowerShell de Windows**: **no constituye una prueba de conexión fallida**. El acceso por SSH desde la laptop Windows, la cuenta restringida y el túnel local hacia `127.0.0.1:8088/nagios/` siguen pendientes de comprobar. No se modificó Docker Compose ni se publicó Nagios en la LAN.
 
+**Verificación de acceso de la colaboradora desde Windows (confirmación posterior):** el responsable confirmó que su compañera **ya pudo visualizar Nagios desde su laptop Windows** tras configurar OpenSSH en Ubuntu y seguir el procedimiento de túnel SSH local a `127.0.0.1:8088`. **Resultado: acceso remoto privado al panel comprobado por reporte del usuario.** No se aportaron todavía captura del panel, resultado de inicio de sesión detallado, estados actuales de los servicios desde Windows ni evidencias cuantitativas de alerta y recuperación durante un fallo. No se infiere que se haya abierto `192.168.100.29:8088` en la LAN; el acceso previsto sigue siendo a través del túnel SSH. Pendiente documentar capturas sin credenciales y ensayar alertas controladas.
+
 ### Segunda campaña: mediciones por repetir
 
 | Prueba | Estado de esta segunda campaña | Evidencia pendiente |
@@ -115,7 +117,7 @@ El arranque de Nagios también mostró verificaciones satisfactorias de dependen
 | Rendimiento desde LAN | Pendiente | Peticiones, fallos, RPS, p95, p99, recursos |
 | Fallo controlado de `app1` | Pendiente | Sonda continua, recuperación y servicio del resto de API |
 | Failover de HAProxy/Keepalived | Pendiente; condicionado a corregir/verificar VIP | Antes/durante/después de la elección |
-| Nagios | **Apache/HTTP recuperado; 401 Basic Auth esperado** | Inicio de sesión y dashboard/alertas actuales pendientes |
+| Nagios | **Apache/HTTP recuperado; colaboradora confirmó que ve el panel desde Windows por SSH** | Captura sin secretos, estados actuales y alertas de fallos pendientes |
 
 Los valores medidos en la primera campaña se conservan más abajo como evidencias históricas y **no deben copiarse como resultados de esta segunda campaña**.
 
