@@ -79,6 +79,18 @@ Se registró una IP LAN posterior al cambio de Wi-Fi, `192.168.100.29`, diferent
 
 **Diagnóstico adicional de Nagios:** `docker inspect distributed-ha-lab-nagios-1 --format 'Estado={{.State.Status}} Salida={{.State.ExitCode}} OOM={{.State.OOMKilled}} Error={{.State.Error}}'` devolvió `Estado=exited Salida=255 OOM=false Error=`. El contenedor sigue detenido; Docker no informa terminación por OOM y el campo de error está vacío. **Causa exacta todavía no determinada.** La próxima intervención debe limitarse al monitoreo, preservando los contenedores y los volúmenes de las bases de datos.
 
+### Segunda campaña — Prueba 4: aplicación, escritura y lectura de MongoDB (24-10-2026)
+
+**Comando en Ubuntu:** `python3 tests/functional.py http://localhost`. Este script consulta `/api/health/deep`, obtiene el catálogo SQL sin caché, comprueba su orden por precio, inserta una reseña de prueba mediante `POST /api/products/{sku}/reviews` y confirma su lectura con `GET` a la misma ruta.
+
+**Resultado observado:** `PASS: health, SQL, catálogo ordenado, escritura/lectura MongoDB. Review: test-e77dd078ad844cc19496252f05ded1dd`. Se notificó que la reseña queda guardada como evidencia. **Aprobada** la prueba funcional de punta a punta, incluida escritura y lectura de la reseña por API. **No se ha comprobado aún la lectura directa de ese documento en las dos réplicas SECONDARY** ni se ha provocado una elección de nuevo PRIMARY. La prueba fue **local en la VM**, no ejecutada desde un segundo equipo de la LAN.
+
+**Recuperación parcial de Nagios:** `docker compose start nagios` informó `Started`, y `docker compose ps -a nagios` mostró `Up 11 seconds`, con puerto publicado únicamente en `127.0.0.1:8088->80/tcp`. Sin embargo, `curl -I --max-time 10 http://127.0.0.1:8088/nagios/` falló con `curl: (56) Recv failure: Conexión reinicializada por la máquina remota`. Por lo tanto, **no se considera recuperada la interfaz HTTP del monitoreo**: es necesario inspeccionar registros recientes, revisar si el contenedor permanece activo y probar `GET` desde loopback. `curl -I http://192.168.100.29/nagios/` devolvió **404** de Nginx/HAProxy de presentación (`x-web-node: webnode3`), resultado esperado porque el puerto 80 de la IP LAN corresponde a la **aplicación**, no al Nagios publicado en loopback: ese 404 no diagnostica Nagios.
+
+El arranque de Nagios también mostró verificaciones satisfactorias de dependencias (Galera, MongoDB y un nodo Redis `Healthy`) y reejecución satisfactoria de `mongo-init` y `catalog-init` mediante Compose; `Exited (0)` para tareas de inicialización no se interpreta como error. No hay evidencia de pérdida de datos en la prueba funcional, pero hay que vigilar el comportamiento de Compose cuando se inician servicios con dependencias.
+
+**Pendiente antes de afirmar monitoreo operativo:** estado actual del contenedor, `docker compose logs --tail=80 nagios` y respuesta de `GET http://127.0.0.1:8088/nagios/`. Mantener sin publicar el puerto 8088 a la LAN.
+
 ### Segunda campaña: mediciones por repetir
 
 | Prueba | Estado de esta segunda campaña | Evidencia pendiente |
@@ -87,10 +99,11 @@ Se registró una IP LAN posterior al cambio de Wi-Fi, `192.168.100.29`, diferent
 | Galera, MongoDB y Redis Sentinel | **Comprobados:** Galera Synced/Primary/3, Mongo 1 PRIMARY + 2 SECONDARY, Sentinel quorum 3 | Líneas 35–125 de `results/baseline-repeticion.txt` |
 | VIPs de Keepalived | **Comprobadas:** propietario único en cada master | Salida de `ip -4 -o addr show dev eth0` en las cuatro instancias |
 | Cliente LAN / compañera | Página accesible según reporte; pruebas instrumentadas pendientes | Solicitudes y capturas desde segundo equipo |
+| MongoDB: funcional (Prueba 4) | **Aprobada** escritura/lectura mediante API; replicas SECONDARY pendientes | `tests/functional.py`, marcador `test-e77dd078ad844cc19496252f05ded1dd` |
 | Rendimiento desde LAN | Pendiente | Peticiones, fallos, RPS, p95, p99, recursos |
 | Fallo controlado de `app1` | Pendiente | Sonda continua, recuperación y servicio del resto de API |
 | Failover de HAProxy/Keepalived | Pendiente; condicionado a corregir/verificar VIP | Antes/durante/después de la elección |
-| Nagios | Historial de alertas CRITICAL/OK; actualmente detenido (`Exited 255`) | Diagnóstico de salida, reactivación y monitoreo actual pendientes |
+| Nagios | Reiniciado y observado `Up 11 seconds`; **HTTP local 8088 reinició conexión** | Estado sostenido, logs y acceso HTTP aún pendientes |
 
 Los valores medidos en la primera campaña se conservan más abajo como evidencias históricas y **no deben copiarse como resultados de esta segunda campaña**.
 
