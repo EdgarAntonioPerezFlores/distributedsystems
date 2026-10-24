@@ -128,6 +128,14 @@ En las filas visibles se muestran estados `OK` para `app1`–`app3` (HTTP de apl
 
 **Pendiente de diagnóstico antes de modificar o repetir:** consultar `docker compose logs --since='2026-10-24T22:13:00Z' --until='2026-10-24T22:20:00Z' nagios` filtrando `web1`, inspeccionar la plantilla `generic-service` en `/opt/nagios/etc/objects/templates.cfg` y confirmar si las comprobaciones están activas. De resultar necesario, establecer para la comprobación de laboratorio de `web1` intervalos específicos breves, validar `nagios -v` y recargar solo Nagios antes de un nuevo fallo, siempre con la VM sana y disco suficiente. **No hay nueva alerta `CRITICAL` documentada para este ensayo.**
 
+### Ajuste de intervalos de Nagios para repetición del ensayo `web1` (24-10-2026)
+
+Tras un paro de `web1` de 120 s sin alerta visible, se consultó el intervalo correspondiente en los logs del contenedor: `docker compose logs --since='2026-10-24T22:13:00Z' --until='2026-10-24T22:20:00Z' nagios | grep -Ei 'web1|Website HTTP|HOST ALERT|SERVICE ALERT'` **no devolvió líneas coincidentes**. La falta de coincidencias en stdout de Compose no prueba por sí sola que el historial interno de Nagios carezca de eventos.
+
+La plantilla original `generic-service` de `/opt/nagios/etc/objects/templates.cfg` informa `active_checks_enabled=1`, `check_interval=10` minutos, `retry_interval=2` minutos y `max_check_attempts=3`. La comprobación `Website HTTP` de `web1` heredaba esos valores, ya que en `nagios/architecture.cfg` no tenía intervalos propios. **Hipótesis fuerte y coherente con los datos:** un paro de solo 2 minutos puede transcurrir entre dos chequeos regulares de 10 minutos, impidiendo observar un `CRITICAL` durante el ensayo. No se atribuye el resultado a un defecto de HAProxy ni a una falla de Nagios sin evidencia.
+
+**Cambio de configuración realizado en GitHub `main`, aún pendiente de aplicar/validar en la VM:** se establecieron **solo para el host `web1` y su servicio `Website HTTP`** `check_interval=0.5` minutos (30 s), `retry_interval=0.2` minutos (12 s) y `max_check_attempts=2`. El resto de los nodos y servicios conserva sus intervalos previos. Próximas acciones: sincronizar código local desde `main` sin descartar cambios, ejecutar `/opt/nagios/bin/nagios -v /opt/nagios/etc/nagios.cfg`, recargar el proceso `nagios` bajo runit sin reiniciar Apache ni Docker y confirmar el check activo. Solo después, y con espacio/disponibilidad suficientes, repetir parada reversible de `web1` supervisada desde el cliente Windows; capturar `CRITICAL` y recuperación `OK`, además de los registros históricos. **No se declara aprobado ese evento todavía.**
+
 ### Segunda campaña: mediciones por repetir
 
 | Prueba | Estado de esta segunda campaña | Evidencia pendiente |
