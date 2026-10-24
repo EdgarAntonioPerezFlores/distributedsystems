@@ -2,7 +2,7 @@
 
 Proyecto académico basado en [tuxtter/distributedsystems](https://github.com/tuxtter/distributedsystems), con mejoras de MongoDB, Redis y acceso a Galera. El servidor corre en Ubuntu dentro de VirtualBox; el compañero genera tráfico desde otra computadora.
 
-**Estado:** código y documentación preparados; verificaciones estáticas y pruebas unitarias focalizadas aprobadas. Arranque Docker, elecciones, carga y failover **pendientes de medir en la VM real**. Ver [VALIDACION.md](docs/VALIDACION.md). No se presenta como despliegue de producción.
+**Estado (24 de octubre de 2026):** despliegue comprobado en Ubuntu/VirtualBox: clústeres y balanceo verificados, prueba de carga local (9,107 solicitudes) y ensayo controlado de caída de `web1` registrados en [RESULTADOS.md](docs/RESULTADOS.md). Después de una interrupción de Docker, las tres API volvieron a responder HTTP 200 y el responsable del servidor confirmó acceso a la página por LAN. **Continúan pendientes** las nuevas mediciones externas, el failover de los balanceadores, el análisis de monitoreo y las pruebas de otros fallos. Es un laboratorio en una VM, no un despliegue de producción.
 
 ## Empieza aquí
 
@@ -67,4 +67,4 @@ En pruebas de Galera usa `/api/products/cheapest?nocache=1` para no ocultar el f
 
 Los contenedores permiten demostrar resiliencia frente a fallos individuales. Una VM y un entry proxy siguen siendo puntos únicos de fallo. Una caída del host interrumpe todo el servicio. Para HA de infraestructura se requieren hosts independientes; eso queda fuera de esta práctica local.
 
-El README original se conserva en [README-UPSTREAM.md](README-UPSTREAM.md); algunos comandos/nombres de ese documento y del TEST-PLAN original corresponden a la arquitectura anterior. Para ejecutar esta rama, seguir los documentos en `docs/`.
+El README original se conserva en [README-UPSTREAM.md](README-UPSTREAM.md); algunos comandos/nombres de ese documento y del TEST-PLAN original corresponden a la arquitectura anterior. Para ejecutar y validar la rama `main`, seguir los documentos en `docs/`.
