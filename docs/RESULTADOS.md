@@ -107,7 +107,7 @@ El arranque de Nagios también mostró verificaciones satisfactorias de dependen
 
 ### Segunda campaña — Evidencia del panel Nagios en laptop Windows (24-10-2026)
 
-**Origen:** captura de pantalla aportada por el estudiante de la vista **Service Status Details For All Hosts** de Nagios Core, accesible mediante túnel SSH desde Windows. En la captura se observa el resumen de estado del monitoreo y la tabla de servicios. La imagen está compartida en la conversación, pero **el archivo PNG todavía no se ha incorporado al repositorio**.
+**Origen:** captura de pantalla aportada por el estudiante de la vista **Service Status Details For All Hosts** de Nagios Core, accesible mediante túnel SSH desde Windows. En la captura se observa el resumen de estado del monitoreo y la tabla de servicios. La imagen original ya se incorporó al repositorio en `docs/evidencias/` junto con las otras dos capturas.
 
 | Estado de Nagios en la captura | Conteo |
 |---|---:|
@@ -162,7 +162,7 @@ El estudiante aportó **tres capturas** de Nagios Core tomadas en el cliente Win
 
 La fila del host `web1` aparece resaltada en la captura intermedia. El contador superior confirma **un host DOWN**, que desaparece en la tercera captura. La evidencia visual constituye un **resultado positivo de detección de caída y recuperación a nivel de host**. No se afirma que un servicio haya pasado a `CRITICAL`, ya que los tres paneles muestran **30 servicios OK**. Tampoco se puede calcular con precisión el tiempo de detección y el de recuperación sin correlacionar los registros de Nagios y los comandos de inyección de fallo del mismo ensayo. La prueba anterior (22:14–22:16 UTC), que no mostró cambios, se mantiene documentada como un ensayo distinto.
 
-**Archivos y publicación:** las capturas originales están preparadas para `docs/evidencias/` y la galería explicativa está en [docs/evidencias/README.md](evidencias/README.md). **Los PNG binarios todavía deben incorporarse al repositorio desde Ubuntu** (ZIP de evidencias entregado al responsable); hasta entonces, los enlaces y previsualizaciones de imágenes no estarán disponibles en GitHub. No interpretar esta preparación como una subida de PNG ya completada.
+**Archivos y publicación:** los **tres PNG originales ya están publicados en GitHub `main`** dentro de `docs/evidencias/` (commit [`b685f277`](https://github.com/EdgarAntonioPerezFlores/distributedsystems/commit/b685f2771b54f6462f0c4f4cf49f48a645d26548)). La galería con las tres imágenes está disponible en [docs/evidencias/README.md](evidencias/README.md). Se verificó que los blobs subidos coinciden exactamente con el contenido de las capturas originales.
 
 ### Segunda campaña: mediciones por repetir
 
@@ -176,7 +176,7 @@ La fila del host `web1` aparece resaltada en la captura intermedia. El contador 
 | Rendimiento desde LAN | Pendiente | Peticiones, fallos, RPS, p95, p99, recursos |
 | Fallo controlado de `app1` | Pendiente | Sonda continua, recuperación y servicio del resto de API |
 | Failover de HAProxy/Keepalived | Pendiente; condicionado a corregir/verificar VIP | Antes/durante/después de la elección |
-| Nagios | **Capturas de Windows: 24 UP → 23 UP / 1 DOWN → 24 UP; 30 servicios OK** | Correlacionar con el log del fallo; PNG pendientes de publicar; sin servicio CRITICAL observado |
+| Nagios | **Tres PNG originales publicados: 24 UP → 23 UP / 1 DOWN → 24 UP; 30 servicios OK** | Correlacionar con el log del fallo; sin servicio CRITICAL observado |
 
 Los valores medidos en la primera campaña se conservan más abajo como evidencias históricas y **no deben copiarse como resultados de esta segunda campaña**.
 
