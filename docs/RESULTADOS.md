@@ -1,6 +1,8 @@
 # Informe de resultados — laboratorio de sistema distribuido
 
-**Estado:** infraestructura y primera prueba de carga verificadas el **24 de octubre de 2026** con salidas de la VM compartidas por el estudiante. **Una prueba controlada de caída de `web1` ya se ejecutó; carga desde cliente externo, fallos de otros componentes y Chaos Engineering siguen pendientes** hasta contar con registros. No se inventan resultados.
+**Estado actualizado (24-10-2026):** sistema de tres capas desplegado y probado en Ubuntu/VirtualBox; replicación Galera y prueba funcional MongoDB comprobadas; quórum Sentinel y rutas HTTP verificadas; caída reversible de `web1` y recuperación observadas. **Tres capturas PNG de Nagios ya están publicadas**, con transición visual de hosts **24 UP → 23 UP / 1 DOWN → 24 UP** y los **30 servicios OK** en esas vistas. Las mediciones externas prolongadas, fallos de balanceadores y nodos de datos, Chaos Engineering y MTTD/MTTR aún están pendientes. No se inventan resultados. [Resumen para entregar](ENTREGA.md) · [Capturas Nagios](evidencias/README.md).
+
+**Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ## Equipo y entorno
 
@@ -270,11 +272,11 @@ Copiar esta ficha por escenario y añadir ruta de evidencia:
 
 | Punto | Evidencia requerida | Estado |
 |---|---|---|
-| 1 | Salud, headers, consistencia SQL, reseña MongoDB, caché | Salud/headers/caché observados; consistencia y reseña específica pendientes |
-| 2 | Carga remota/estrés/spike/soak con recursos | Solo smoke local medido |
-| 3 | Failover de web/API/LB/Galera/proxy/Redis/Mongo y continuidad | web1 medido (144/145); otras capas pendientes |
-| 4 | Chaos Monkey, red, recursos y límites | Pendiente |
-| 5 | Nagios, MTTD/MTTR, alertas y presupuesto de error | Pendiente |
+| 1 | Salud, headers, consistencia SQL, reseña MongoDB, caché | **Comprobado en la VM:** salud y balanceo, escritura/lectura Galera, reseña Mongo vía API y caché; cliente remoto con carga instrumentada pendiente |
+| 2 | Carga remota/estrés/spike/soak con recursos | **Smoke local medido** (9,107 peticiones); ensayos externos y prolongados pendientes |
+| 3 | Failover de web/API/LB/Galera/proxy/Redis/Mongo y continuidad | **web1 parado y recuperado;** en primera campaña 144/145 muestras exitosas; failover de las demás capas pendiente |
+| 4 | Chaos Monkey, red, recursos y límites | **No ejecutado** en esta campaña; no atribuir resultados |
+| 5 | Nagios, MTTD/MTTR, alertas y presupuesto de error | **Panel accesible desde Windows y 3 PNG publicados: host DOWN → UP**; no hay servicio CRITICAL en esas vistas ni MTTD/MTTR medido |
 
 ## Ejecución y recolección
 
@@ -282,4 +284,4 @@ Seguir `docs/PRUEBAS.md` **por etapas**, no todos los fallos a la vez. Confirmar
 
 ## Conclusión provisional
 
-La VM ha demostrado funcionamiento de clústeres Galera y MongoDB, quórum Redis Sentinel, balanceo entre tres web/API y una primera carga local de 9107 peticiones sin fallos reportados por ApacheBench. Se observó continuidad parcial (144/145 muestras) y recuperación en la caída de un servidor web. **No se ha demostrado aún tolerancia a caída de un balanceador, HA de host, disponibilidad externa sostenida o Chaos Engineering**. Una sola VM y el contenedor de entrada constituyen puntos únicos de fallo; no se afirma despliegue en AWS ni disponibilidad de producción.
+Los requisitos de arquitectura y archivos de entrega — [JPG](arquitectura.jpg), documentación y configuración/IaC — están incluidos en `main`. La VM ha demostrado funcionamiento de clústeres Galera y MongoDB, quórum Redis Sentinel, balanceo entre tres web/API y una carga local de 9,107 peticiones sin fallos reportados por ApacheBench. Se comprobó replicación SQL y escritura/lectura Mongo mediante API. Se observó recuperación después de detener un servidor web (primera sonda local: 144/145 muestras) y **Nagios registró visualmente un host DOWN que luego volvió a UP**, respaldado por [tres PNG reales](evidencias/README.md); los 30 servicios aparecen OK en esas imágenes, no CRITICAL. **Todavía no se ha demostrado failover real de un balanceador, HA de host, disponibilidad externa sostenida, Chaos Engineering ni MTTD/MTTR calculado.** La VM y el contenedor de entrada constituyen puntos únicos de fallo; no se afirma despliegue en AWS ni disponibilidad de producción. [Resumen final de entrega](ENTREGA.md).
