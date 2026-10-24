@@ -1,126 +1,71 @@
-# Distributed three-tier store demo
+# Sistema distribuido de tres capas — laboratorio VirtualBox
 
-The stack serves a static storefront through three Nginx presentation nodes. Its
-Node.js application tier queries a MariaDB Galera cluster for the ten cheapest
-products, caches that list in Redis, and stores product reviews in MongoDB.
-HAProxy instances distribute requests within each tier, and Keepalived provides
-a master/backup virtual IP for each HAProxy pair.
+Proyecto académico basado en [tuxtter/distributedsystems](https://github.com/tuxtter/distributedsystems), con mejoras de MongoDB, Redis y acceso a Galera. El servidor corre en Ubuntu dentro de VirtualBox; el compañero genera tráfico desde otra computadora.
 
-## Architecture
+**Estado:** código y documentación preparados; verificaciones estáticas y pruebas unitarias focalizadas aprobadas. Arranque Docker, elecciones, carga y failover **pendientes de medir en la VM real**. Ver [VALIDACION.md](docs/VALIDACION.md). No se presenta como despliegue de producción.
 
-```mermaid
-flowchart LR
-    browser[Browser]
+## Empieza aquí
 
-    subgraph edge["Presentation tier · edge network"]
-        plbM["HAProxy presentation master<br/>host port 80"]
-        plbB["HAProxy presentation backup"]
-        pka["Keepalived VRRP pair<br/>presentation VIP 172.30.0.250"]
-        web1["Nginx webnode1"]
-        web2["Nginx webnode2"]
-        web3["Nginx webnode3"]
-        plbM --- pka
-        plbB --- pka
-        plbM --> web1
-        plbM --> web2
-        plbM --> web3
-        plbB -. failover .-> web1
-        plbB -. failover .-> web2
-        plbB -. failover .-> web3
-    end
+1. [Guía Ubuntu/VirtualBox y conexión del compañero](docs/GUIA-UBUNTU.md).
+2. [Arquitectura y decisiones, con trazabilidad ToDo 2.1–2.3 y todo el punto 3](docs/ARQUITECTURA.md).
+3. [Pruebas paso a paso: TEST-PLAN puntos 1–5](docs/PRUEBAS.md).
+4. [Operación, backup y recuperación](docs/OPERACION.md).
+5. [Plantilla de resultados para completar con mediciones](docs/RESULTADOS.md).
 
-    subgraph appnet["Application tier · internal application network"]
-        albM["HAProxy application master"]
-        albB["HAProxy application backup"]
-        aka["Keepalived VRRP pair<br/>application VIP 172.31.0.250"]
-        app1["API app1"]
-        app2["API app2"]
-        app3["API app3"]
-        albM --- aka
-        albB --- aka
-        albM --> app1
-        albM --> app2
-        albM --> app3
-        albB -. failover .-> app1
-        albB -. failover .-> app2
-        albB -. failover .-> app3
-    end
+## Diagrama
 
-    subgraph data["Data tier · internal database network"]
-        redis[("Redis<br/>catalog cache")]
-        galera1[("MariaDB Galera node 1<br/>catalog queries")]
-        galera2[("MariaDB Galera node 2")]
-        galera3[("MariaDB Galera node 3")]
-        mongo[("MongoDB<br/>product reviews")]
-        galera1 <--> galera2
-        galera2 <--> galera3
-        galera3 <--> galera1
-    end
+![Arquitectura de tres capas](docs/arquitectura.jpg)
 
-    browser -->|"HTTP :80"| plbM
-    web1 -->|"API via VIP"| aka
-    web2 -->|"API via VIP"| aka
-    web3 -->|"API via VIP"| aka
-    app1 -->|"cache lookup / invalidate"| redis
-    app2 -->|"cache lookup / invalidate"| redis
-    app3 -->|"cache lookup / invalidate"| redis
-    app1 -->|"cache miss: query catalog"| galera1
-    app2 -->|"cache miss: query catalog"| galera1
-    app3 -->|"cache miss: query catalog"| galera1
-    app1 -->|"read/write reviews"| mongo
-    app2 -->|"read/write reviews"| mongo
-    app3 -->|"read/write reviews"| mongo
+[Descargar JPG](docs/arquitectura.jpg). Estilo visual cloud; infraestructura local, no AWS real. Fuente reproducible: `scripts/render-diagram.py` (Python + Pillow; ejecutar desde la raíz).
+
+## Componentes
+
+| Capa | Servicios |
+|---|---|
+| Entrada y presentación | Entry HTTP; HAProxy master/backup + Keepalived; 3 Nginx |
+| Aplicación | HAProxy master/backup + Keepalived; 3 API Node.js |
+| SQL | 2 HAProxy de base de datos; 3 Galera; checks HTTP de estado wsrep |
+| Documentos | MongoDB replica set de 3 miembros; usuario de aplicación |
+| Caché | Redis master + 2 réplicas; 3 Sentinel; caché desechable |
+| Operación | Nagios; scripts de arranque, salud, backup y fallos |
+| Pruebas | ab/Siege/JMeter desde cliente; Chaos Monkey local del repo |
+
+## Arranque resumido
+
+Solo con Docker Compose instalado y volúmenes nuevos; la guía explica instalación y red:
+
+```bash
+git clone --branch proyecto-ha-virtualbox https://github.com/EdgarAntonioPerezFlores/distributedsystems.git
+cd distributedsystems
+bash scripts/setup.sh
+bash scripts/first-start.sh
+bash scripts/runtime-validate.sh
 ```
 
-Product-list requests check Redis first; a cache miss queries MariaDB and then
-populates Redis. Review requests use MongoDB, with MariaDB used to verify the
-product before a review is inserted. In this single-host Compose setup, host
-port 80 is published by the presentation master container; the presentation
-VIP does not move Docker's host-port mapping during failover.
+Abrir `http://localhost` en Ubuntu o `http://IP_UBUNTU` desde el compañero. No compartir VIPs Docker como dirección remota.
 
-## Run locally
+**No usar `docker compose down -v` para reiniciar.** Para datos existentes y apagado completo seguir [el runbook](docs/OPERACION.md). No subir `.env`, claves o backups. Las credenciales se generan localmente.
 
-1. Copy `.env.example` to `.env` and replace the example passwords.
-2. Start the stack with `docker compose up --build`.
-3. Open `http://localhost/` for the storefront and
-   `http://localhost:8088/` for Nagios.
+## Prueba externa mínima
 
-The product endpoint is `http://localhost/api/products/cheapest`; it returns
-JSON sorted by ascending price. The storefront calls this endpoint and renders
-the returned products. Schema creation and sample data insertion are
-idempotently performed by the `catalog-init` service after the first Galera
-node is healthy.
+```bash
+export BASE=http://IP_UBUNTU
+python3 tests/functional.py "$BASE"
+bash tests/load.sh "$BASE" 5 30
+```
 
-The storefront also displays a live request pipeline for its product and
-review API requests. The API's `X-Request-Trace` response header records the
-presentation load balancer, selected web node, application load balancer,
-application node, and the actual data stores touched by that request.
-The storefront API explorer menu can query `/`, `/health`,
-`/products/cheapest`, and `/products/ST-001/reviews`.
+En pruebas de Galera usa `/api/products/cheapest?nocache=1` para no ocultar el fallo con caché. Para MongoDB prueba reseñas. Documentar tanto fallos como éxitos.
 
-Use the storefront's API explorer menu to query the product, review, service
-information, and health endpoints. Its **Clear Redis catalog cache** button
-calls `POST /api/cache/clear`, which deletes only the cheapest-products cache
-entry; the next catalog request refills it from MariaDB.
+## Entregables
 
-The application uses Redis to cache the cheapest-products response for 60
-seconds. MongoDB stores product reviews: use
-`GET /api/products/ST-001/reviews` to read reviews or send JSON such as
-`{"reviewer":"Taylor","rating":5,"comment":"Great bag."}` to
-`POST /api/products/ST-001/reviews` to add one. The initialization service
-creates the review index and inserts sample reviews idempotently. MongoDB and
-Redis are private to the database network and are not published on host ports.
+- Diagrama JPG y generador.
+- Markdown de arquitectura, guía de red, operación y pruebas.
+- `docker-compose.yml`, Dockerfiles, configuraciones HAProxy/Keepalived/MongoDB/Redis y cambios de API.
+- Scripts de pruebas remotas, JMeter `.jmx`, fallos y evidencias.
+- `docs/RESULTADOS.md`: completar nombres, recursos, reportes reales y conclusiones antes de entregar.
 
-## Load-balancer failover
+## Limitación fundamental
 
-The presentation VIP is `172.30.0.250` and the application VIP is
-`172.31.0.250`. Each Keepalived pair shares its HAProxy container's network
-namespace, uses unicast VRRP, and tracks the local HAProxy listener. Application
-requests from Nginx use the floating application VIP.
+Los contenedores permiten demostrar resiliencia frente a fallos individuales. Una VM y un entry proxy siguen siendo puntos únicos de fallo. Una caída del host interrumpe todo el servicio. Para HA de infraestructura se requieren hosts independientes; eso queda fuera de esta práctica local.
 
-Compose publishes host port 80 on the presentation master container. Docker's
-published-port mapping targets that specific container, so on a single-host
-Compose deployment the VIP failover does not move the host port mapping. The
-presentation VIP is available to other containers on the edge network; expose
-it through a host/network setup that supports floating VIPs if host-level
-failover is required.
+El README original se conserva en [README-UPSTREAM.md](README-UPSTREAM.md); algunos comandos/nombres de ese documento y del TEST-PLAN original corresponden a la arquitectura anterior. Para ejecutar esta rama, seguir los documentos en `docs/`.

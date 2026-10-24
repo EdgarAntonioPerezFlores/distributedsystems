@@ -1,3 +1,3 @@
 #!/bin/sh
 
-nc -z -w 1 127.0.0.1 "$1"
+exec wget -q -T 1 -O /dev/null "http://127.0.0.1:$1/"

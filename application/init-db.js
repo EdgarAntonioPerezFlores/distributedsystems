@@ -2,47 +2,17 @@ import { readFile } from "node:fs/promises";
 import { MongoClient } from "mongodb";
 import mysql from "mysql2/promise";
 
-const required = (name) => {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-};
-
-const connectToMariaDb = async () => {
-  for (let attempt = 1; attempt <= 30; attempt += 1) {
-    try {
-      return await mysql.createConnection({
-        host: required("DB_HOST"),
-        port: Number(process.env.DB_PORT || 3306),
-        database: required("DB_NAME"),
-        user: required("DB_USER"),
-        password: required("DB_PASSWORD"),
-        multipleStatements: true,
-      });
-    } catch (error) {
-      if (!["ECONNREFUSED", "ETIMEDOUT", "EHOSTUNREACH"].includes(error.code) || attempt === 30) {
-        throw error;
-      }
-      console.log(`MariaDB is not ready; retrying (${attempt}/30)`);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-    }
-  }
-  throw new Error("MariaDB connection retry limit reached");
-};
-
-const connection = await connectToMariaDb();
-const mongo = new MongoClient(
-  `mongodb://${required("MONGO_HOST")}:${Number(process.env.MONGO_PORT || 27017)}/${encodeURIComponent(required("MONGO_DB"))}`,
-  {
-    auth: {
-      username: required("MONGO_USER"),
-      password: required("MONGO_PASSWORD"),
-    },
-    authSource: "admin",
-  },
-);
+import {required,dbHosts,mysqlOptions,mongoUri,mongoOptions} from './db.js';
+let connection;
+for(let attempt=0;attempt<90 && !connection;attempt++) {
+ for(const host of dbHosts) {
+  try {connection=await mysql.createConnection({...mysqlOptions(host),multipleStatements:true});break;}
+  catch { /* proxies may be waiting for cluster-aware checks */ }
+ }
+ if(!connection) await new Promise(r=>setTimeout(r,2000));
+}
+if(!connection) throw new Error('No Galera proxy is ready');
+const mongo=new MongoClient(mongoUri(),mongoOptions());
 
 try {
   const schema = await readFile(new URL("./database/catalog.sql", import.meta.url), "utf8");
@@ -89,3 +59,4 @@ try {
 } finally {
   await mongo.close();
 }
+

@@ -1,43 +1,10 @@
 import { createServer } from "node:http";
 import { MongoClient } from "mongodb";
-import mysql from "mysql2/promise";
-import { createClient } from "redis";
-
-const required = (name) => {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-};
-
-const pool = mysql.createPool({
-  host: required("DB_HOST"),
-  port: Number(process.env.DB_PORT || 3306),
-  database: required("DB_NAME"),
-  user: required("DB_USER"),
-  password: required("DB_PASSWORD"),
-  waitForConnections: true,
-  connectionLimit: 10,
-});
-
-const mongo = new MongoClient(
-  `mongodb://${required("MONGO_HOST")}:${Number(process.env.MONGO_PORT || 27017)}/${encodeURIComponent(required("MONGO_DB"))}`,
-  {
-    auth: {
-      username: required("MONGO_USER"),
-      password: required("MONGO_PASSWORD"),
-    },
-    authSource: "admin",
-  },
-);
-const redis = createClient({
-  socket: {
-    host: required("REDIS_HOST"),
-    port: Number(process.env.REDIS_PORT || 6379),
-  },
-});
-redis.on("error", (error) => console.error("Redis client error:", error));
+import {required, createDbPool, mongoUri, mongoOptions} from './db.js';
+import {createCache} from './cache.js';
+const pool=createDbPool();
+const mongo=new MongoClient(mongoUri(),mongoOptions());
+const redis=createCache();
 
 class HttpError extends Error {
   constructor(statusCode, message, trace) {
@@ -74,10 +41,12 @@ const sendJson = (response, statusCode, payload, trace = []) => {
 };
 
 const start = async () => {
-  await Promise.all([mongo.connect(), redis.connect()]);
+  await mongo.connect();
   const reviews = mongo.db(required("MONGO_DB")).collection("product_reviews");
   const productsCacheKey = "store:products:cheapest";
   const server = createServer((request, response) => {
+    const started=performance.now();
+    response.on('finish',()=>console.log(JSON.stringify({time:new Date().toISOString(),node:process.env.APPLICATION_NODE,method:request.method,path:request.url,status:response.statusCode,ms:Math.round(performance.now()-started)})));
     const trace = [
       request.headers["x-presentation-lb"] || "presentation-lb-unknown",
       request.headers["x-web-node"] || "web-node-unknown",
@@ -85,11 +54,20 @@ const start = async () => {
       process.env.APPLICATION_NODE || "app-node-unknown",
     ];
     void (async () => {
-      const pathname = new URL(request.url, "http://localhost").pathname;
+      const url = new URL(request.url, "http://localhost");
+      const pathname=url.pathname;
+      if (pathname === '/diagnostics/db' && request.method === 'GET' && process.env.ENABLE_LAB_TESTS==='true') {
+        const [rows]=await pool.query('SELECT @@hostname AS node, @@max_connections AS maxConnections, NOW() AS time');
+        sendJson(response,200,rows,trace); return;
+      }
+      if (pathname === '/health/deep' && request.method === 'GET') {
+        await Promise.all([pool.query('SELECT 1'),mongo.db().command({ping:1})]);
+        sendJson(response,redis.ready()?200:503,{sql:true,mongo:true,cache:redis.ready()},trace); return;
+      }
 
       if (request.method === "GET" && pathname === "/health") {
-        await Promise.all([pool.query("SELECT 1"), mongo.db().command({ ping: 1 }), redis.ping()]);
-        sendJson(response, 200, { status: "ok" }, [...trace, "galera1", "mongodb", "redis"]);
+        await pool.query("SELECT 1");
+        sendJson(response, 200, { status: "ok", sql: "ready", cache: redis.ready() ? "ready" : "degraded", node: process.env.APPLICATION_NODE }, [...trace, "galera-via-proxy"]);
         return;
       }
 
@@ -104,19 +82,22 @@ const start = async () => {
 
       if (request.method === "GET" && pathname === "/products/cheapest") {
         trace.push("redis");
-        const cached = await redis.get(productsCacheKey);
+        const bypass = process.env.ENABLE_LAB_TESTS==='true' && url.searchParams.get('nocache')==='1';
+        const cached = bypass ? null : await redis.get(productsCacheKey);
         if (cached) {
           trace.push("cache hit");
           sendJson(response, 200, JSON.parse(cached), trace);
           return;
         }
-        trace[trace.length - 1] = "redis (cache miss)";
-        trace.push("galera1");
+        trace[trace.length - 1] = bypass ? "cache bypass" : (redis.ready() ? "redis (cache miss)" : "redis unavailable; SQL fallback");
+        trace.push("galera-via-proxy");
         const [products] = await pool.execute(
           "SELECT id, sku, name, description, price FROM products ORDER BY price ASC, id ASC LIMIT 10",
         );
-        trace.push("redis (cache write)");
-        await redis.set(productsCacheKey, JSON.stringify(products), { EX: 60 });
+        if (!bypass) {
+          const stored = await redis.set(productsCacheKey, JSON.stringify(products));
+          trace.push(stored ? "redis (cache write)" : "redis (write skipped)");
+        }
         sendJson(response, 200, products, trace);
         return;
       }
@@ -126,7 +107,7 @@ const start = async () => {
         sendJson(
           response,
           200,
-          { cacheKey: productsCacheKey, cacheEntryRemoved: removed === 1 },
+          { cacheKey: productsCacheKey, cacheEntryRemoved: removed === 1, cacheAvailable: removed !== null },
           [...trace, "redis (delete catalog cache)"],
         );
         return;
@@ -166,7 +147,7 @@ const start = async () => {
         ) {
           throw new HttpError(400, "Provide reviewer, rating (1-5), and comment within the allowed lengths");
         }
-        trace.push("galera1 (product lookup)");
+        trace.push("galera-via-proxy (product lookup)");
         const [matches] = await pool.execute("SELECT 1 FROM products WHERE sku = ? LIMIT 1", [
           reviewMatch[1],
         ]);
@@ -220,3 +201,4 @@ start().catch((error) => {
   console.error("Application startup failed:", error);
   process.exitCode = 1;
 });
+

@@ -24,3 +24,8 @@ credentials.json
 backups/
 **/backups/
 
+results/
+__pycache__/
+node_modules/
+*.pyc
+.recovery.*.yml
