@@ -35,7 +35,7 @@ Proyecto académico basado en [tuxtter/distributedsystems](https://github.com/tu
 Solo con Docker Compose instalado y volúmenes nuevos; la guía explica instalación y red:
 
 ```bash
-git clone --branch proyecto-ha-virtualbox https://github.com/EdgarAntonioPerezFlores/distributedsystems.git
+git clone https://github.com/EdgarAntonioPerezFlores/distributedsystems.git
 cd distributedsystems
 bash scripts/setup.sh
 bash scripts/first-start.sh
