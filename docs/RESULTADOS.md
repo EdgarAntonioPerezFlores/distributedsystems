@@ -99,6 +99,8 @@ El arranque de Nagios también mostró verificaciones satisfactorias de dependen
 
 **Causa identificada del fallo Apache/Nagios (24-10-2026):** la consulta de procesos confirmó que **PID 19 corresponde a `rsyslogd -n -f /etc/rsyslog.conf`**, mientras `/run/apache2/apache2.pid` y `/var/run/apache2/apache2.pid` contienen ambos `19`. El supervisor indica `down: apache: 0s, normally up, want up`; `apache2ctl configtest` concluye **`Syntax OK`** con advertencia no fatal de variable `TZ` indefinida. Los logs de Apache incluyen aviso histórico `AH00098: pid file ... overwritten -- Unclean shutdown of previous Apache run?` y la salida de Compose repite `httpd (pid 19) already running`. En conjunto, **queda confirmado que el archivo PID conservado no identifica actualmente a Apache** y bloquea su arranque normal. La remediación propuesta es verificar otra vez el PID y quitar **solo** ese archivo obsoleto dentro del contenedor; **no** matar PID 19 (`rsyslogd`), no recrear contenedores ni alterar volúmenes. Aún no se ha aportado evidencia de aplicación de la corrección o recuperación de la interfaz HTTP.
 
+**Nagios: recuperación confirmada de Apache y HTTP con autenticación (24-10-2026):** tras comprobar que `/run/apache2/apache2.pid` contenía PID `19` y que el proceso real `19` era `rsyslogd`, se eliminó **solo** ese PID obsoleto desde el contenedor y se ejecutó `sv up apache`. La salida inicial fue `Archivo PID obsoleto eliminado.` y `run: apache: (pid 6185) 3s`. Una segunda comprobación indicó `run: apache: (pid 6185) 15s` y mostró al Apache principal `/usr/sbin/apache2 -D NO_DETACH` (PID `6185`) y cinco procesos trabajadores (`6188`–`6192`). La petición `curl --noproxy '*' -i --max-time 15 http://127.0.0.1:8088/nagios/` devolvió **HTTP/1.1 401 Unauthorized**, encabezado `Server: Apache/2.4.58 (Ubuntu)` y `WWW-Authenticate: Basic realm="Nagios Access"`: el servidor web está escuchando y su autenticación básica se exige correctamente. **Resultado: recuperación de Apache/HTTP APROBADA.** No se ha comprobado todavía un inicio de sesión autenticado ni el estado actual de todos los hosts/servicios del panel Nagios. El puerto `8088` continúa limitado a `127.0.0.1` del host; se mantiene `192.168.100.29:80` para la aplicación distribuida y no se requiere publicar Nagios en la LAN. No se reiniciaron Docker ni los contenedores de Galera/MongoDB/Redis para solucionar Apache.
+
 ### Segunda campaña: mediciones por repetir
 
 | Prueba | Estado de esta segunda campaña | Evidencia pendiente |
@@ -111,7 +113,7 @@ El arranque de Nagios también mostró verificaciones satisfactorias de dependen
 | Rendimiento desde LAN | Pendiente | Peticiones, fallos, RPS, p95, p99, recursos |
 | Fallo controlado de `app1` | Pendiente | Sonda continua, recuperación y servicio del resto de API |
 | Failover de HAProxy/Keepalived | Pendiente; condicionado a corregir/verificar VIP | Antes/durante/después de la elección |
-| Nagios | Reiniciado y observado `Up 11 seconds`; **HTTP local 8088 reinició conexión** | Estado sostenido, logs y acceso HTTP aún pendientes |
+| Nagios | **Apache/HTTP recuperado; 401 Basic Auth esperado** | Inicio de sesión y dashboard/alertas actuales pendientes |
 
 Los valores medidos en la primera campaña se conservan más abajo como evidencias históricas y **no deben copiarse como resultados de esta segunda campaña**.
 
