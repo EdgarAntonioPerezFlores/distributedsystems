@@ -148,6 +148,22 @@ Se ejecutó la validación interna `/opt/nagios/bin/nagios -v /opt/nagios/etc/na
 
 Finalmente, `curl --noproxy '*' -I --max-time 10 http://127.0.0.1:8088/nagios/` respondió **`HTTP/1.1 401 Unauthorized`**, `Server: Apache/2.4.58 (Ubuntu)`, `WWW-Authenticate: Basic realm="Nagios Access"`. **Resultado: configuración de monitoreo rápido montada, validada y endpoint Apache con autenticación operativo.** La aparición de `CRITICAL` y posterior `OK` por caída reversible de `web1` aún **no se ha ejecutado bajo esta configuración nueva**; requiere comprobar recursos y recopilar las alertas observadas desde la laptop Windows.
 
+### Evidencias de Nagios: host DOWN detectado y recuperación en Windows (24-10-2026)
+
+El estudiante aportó **tres capturas** de Nagios Core tomadas en el cliente Windows mediante túnel SSH. Los contadores visibles muestran esta secuencia:
+
+| Captura | Hora de panel (UTC) | Hosts UP | Hosts DOWN | Servicios OK | Servicios CRITICAL |
+|---|---|---:|---:|---:|---:|
+| [Estado inicial](evidencias/nagios-01-estado-inicial-20261024.png) | 22:08 | **24** | 0 | **30** | 0 |
+| [Detección de host caído](evidencias/nagios-02-web1-down-20261024.png) | 22:38 | **23** | **1** | **30** | 0 |
+| [Recuperación](evidencias/nagios-03-recuperacion-20261024.png) | 22:41 | **24** | 0 | **30** | 0 |
+
+![Captura intermedia: un host DOWN mientras los 30 servicios siguen OK](evidencias/nagios-02-web1-down-20261024.png)
+
+La fila del host `web1` aparece resaltada en la captura intermedia. El contador superior confirma **un host DOWN**, que desaparece en la tercera captura. La evidencia visual constituye un **resultado positivo de detección de caída y recuperación a nivel de host**. No se afirma que un servicio haya pasado a `CRITICAL`, ya que los tres paneles muestran **30 servicios OK**. Tampoco se puede calcular con precisión el tiempo de detección y el de recuperación sin correlacionar los registros de Nagios y los comandos de inyección de fallo del mismo ensayo. La prueba anterior (22:14–22:16 UTC), que no mostró cambios, se mantiene documentada como un ensayo distinto.
+
+**Archivos y publicación:** las capturas originales están preparadas para `docs/evidencias/` y la galería explicativa está en [docs/evidencias/README.md](evidencias/README.md). **Los PNG binarios todavía deben incorporarse al repositorio desde Ubuntu** (ZIP de evidencias entregado al responsable); hasta entonces, los enlaces y previsualizaciones de imágenes no estarán disponibles en GitHub. No interpretar esta preparación como una subida de PNG ya completada.
+
 ### Segunda campaña: mediciones por repetir
 
 | Prueba | Estado de esta segunda campaña | Evidencia pendiente |
@@ -160,7 +176,7 @@ Finalmente, `curl --noproxy '*' -I --max-time 10 http://127.0.0.1:8088/nagios/` 
 | Rendimiento desde LAN | Pendiente | Peticiones, fallos, RPS, p95, p99, recursos |
 | Fallo controlado de `app1` | Pendiente | Sonda continua, recuperación y servicio del resto de API |
 | Failover de HAProxy/Keepalived | Pendiente; condicionado a corregir/verificar VIP | Antes/durante/después de la elección |
-| Nagios | **Panel confirmado desde Windows; sin cambio visual reportado durante paro `web1` de 120 s** | Revisar historial/periodicidad; alerta CRITICAL todavía no demostrada |
+| Nagios | **Capturas de Windows: 24 UP → 23 UP / 1 DOWN → 24 UP; 30 servicios OK** | Correlacionar con el log del fallo; PNG pendientes de publicar; sin servicio CRITICAL observado |
 
 Los valores medidos en la primera campaña se conservan más abajo como evidencias históricas y **no deben copiarse como resultados de esta segunda campaña**.
 
