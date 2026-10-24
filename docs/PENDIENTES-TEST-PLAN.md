@@ -29,7 +29,7 @@
 | **4. Chaos** | Chaos Monkey aleatorio y comparación de disponibilidad, empezando en grupo `web` y después `app` | **No ejecutado; implementado como código** |
 | **4. Chaos** | Latencia/jitter, pérdida, ancho de banda, fallos de recursos, compuestos; partición/quórum solo con precauciones | **No ejecutados**. Escenarios de reloj/disco lleno deben declararse no aplicables a VM única salvo laboratorio aislado |
 | **5. Observabilidad** | Nagios accesible desde Windows por túnel SSH; tres PNG muestran 24 UP → 23 UP / 1 DOWN → 24 UP y 30 servicios OK | **Evidencia real incluida** |
-| **5. Observabilidad** | Unir capturas y eventos al log de inyección, medir MTTD/MTTR, disponibilidad e impacto, contar alertas no detectadas y falsas | **Sin métricas suficientes**. Las capturas NO muestran servicio CRITICAL |
+| **5. Observabilidad** | Unir capturas y eventos al log de inyección, medir MTTD/MTTR, disponibilidad e impacto, contar alertas no detectadas y falsas | **Cronología de un ensayo web1 ya correlacionada:** Nagios HOST DOWN SOFT +6 s, SERVICE CRITICAL HARD +14 s, HOST DOWN HARD +48 s, recuperación OK/UP +134 s; faltan logs brutos publicados y medias de varias ejecuciones. Las capturas siguen mostrando solo servicios OK |
 
 ## C. Orden razonable para completar con el menor riesgo
 
@@ -73,6 +73,14 @@ El operador ejecutó `find results -maxdepth 3 -type f | sort` en su VM y confir
 
 **Acción próxima sin alterar servicios:** obtener un resumen de los dos CSV de sonda, de las marcas UTC de los `fault-web1.log`, de los percentiles AB y de alertas Nagios actuales; si se publican los archivos, inspeccionar para eliminar contraseñas o datos personales y dejar claro que son evidencias previas al cambio de IP.
 
+### Correlación recuperada después del inventario (24-10-2026)
+
+Al analizar salidas de `fault-20261024T223842Z-web1.log` y del log activo de Nagios, **ya se confirmó el fallo web1 y se calcularon intervalos observados de una sola ejecución**: inyección 22:38:42Z, DOWN SOFT 22:38:48Z (+6 s), CRITICAL HARD 22:38:56Z (+14 s), DOWN HARD 22:39:30Z (+48 s), recuperación solicitada 22:40:45Z, OK/UP HARD 22:40:56Z (+134 s desde la inyección y +11 s tras la solicitud de recuperación). [Detalle y límites](RESULTADOS.md#evidencia-correlacionada-de-nagios-y-fallo-real-de-web1-24-10-2026).
+
+El CSV `sonda-fallo-web1.csv` quedó ratificado con **144/145 = 99.31 % de muestras correctas**, con `TimeoutError` a las 15:57:51Z durante otro ensayo. Los datos de ApacheBench siguen siendo **9,107 solicitudes, 0 fallos, 303.56 req/s y p95=34 ms**. **La sonda de app1 no está evaluada**: un valor vacío o ausente en `ok` interrumpió el resumen y no consta el log de inyección. No se debe marcar failover de API.
+
+**Queda pendiente:** obtener y revisar los archivos brutos (en VM, fuera de GitHub por `.gitignore`) y añadir un registro de recursos bajo carga; realizar otras pruebas de failover/Chaos, y promediar varios ensayos si se usa el término `MTTD/MTTR` como *mean*.
+
 ## D. Checklist de publicación final
 
 - [x] Código/IaC, arquitectura JPG y documentación base en `main`.
@@ -80,7 +88,8 @@ El operador ejecutó `find results -maxdepth 3 -type f | sort` en su VM y confir
 - [ ] Logs de rendimiento y recursos (local y, de ser posible, desde Windows).
 - [ ] Evidencias de failover por componente y verificación posterior.
 - [ ] Ejecución y resultados de Chaos Monkey; escenarios no ejecutados declarados.
-- [ ] Logs/cronología Nagios y métricas de detección/recuperación.
+- [x] Cronología Nagios y latencias de detección y recuperación **de un ensayo web1** correlacionadas con `fault.sh` (ver `RESULTADOS.md`).
+- [ ] Publicar registros Nagios/fallo originales **saneados**; si se requieren medias MTTD/MTTR, repetir observaciones controladas y calcular promedios.
 - [ ] Datos académicos de equipo, materia y fecha, si son requeridos por la portada.
 
 Véase [RESULTADOS.md](RESULTADOS.md) para datos observados y [ENTREGA.md](ENTREGA.md) para estructura de la entrega.
