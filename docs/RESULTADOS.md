@@ -1,55 +1,117 @@
-# Informe de resultados — completar con evidencia real
+# Informe de resultados — laboratorio de sistema distribuido
 
-Estado inicial: **PENDIENTE DE EJECUCIÓN EN VIRTUALBOX**. Los valores en blanco no son aprobaciones. No se han medido carga, disponibilidad ni failover en los equipos del estudiante.
+**Estado:** infraestructura y primera prueba de carga verificadas el **24 de octubre de 2026** con salidas de la VM compartidas por el estudiante. **Una prueba controlada de caída de `web1` ya se ejecutó; carga desde cliente externo, fallos de otros componentes y Chaos Engineering siguen pendientes** hasta contar con registros. No se inventan resultados.
 
 ## Equipo y entorno
 
-- Integrantes / matrícula: pendiente.
-- Fecha y zona horaria: pendiente (evidencias de scripts en UTC).
-- Ubuntu / VirtualBox / Docker / Compose: pendiente.
-- CPU/RAM/disco del anfitrión y recursos asignados a VM: pendiente.
-- Equipo cliente, herramienta/versión, red Wi-Fi/Ethernet/VPN: pendiente.
-- IP/puerto del servicio; commit probado; digests: pendiente.
+- Servidor: Ubuntu en una VM de VirtualBox; Docker Compose, proyecto `distributed-ha-lab`.
+- Fecha observada de prueba: 2026-10-24. Las rutas generadas por los scripts y sus marcas temporales utilizan UTC.
+- IP LAN de la VM durante las pruebas: `192.168.1.88:80`; vía adaptador puente Wi-Fi. También se observó `192.168.1.87` en otro adaptador de la misma subred; conviene mantener solo uno para evitar enrutamiento ambiguo.
+- Peticiones de verificación satisfactorias en `localhost` y `192.168.1.88`. **Esto no sustituye probar desde el equipo del compañero.**
+- Máquina cliente externa, integrantes/matrícula, CPU/RAM/disco, versiones exactas de Docker/Compose, commit efectivamente desplegado y digests: **pendientes de registrar**.
+- La prueba de carga inicial se lanzó desde la **propia VM**, no desde un cliente externo.
+- Nagios: tras observarse `Exited (255)`, el estudiante proporcionó una nueva comprobación `docker compose ps -a nagios` con estado **`Up 3 minutes`**. Continúa pendiente documentar interfaz, alertas y MTTD/MTTR.
 
-## Resumen medido
+## Salud y balanceo observados
 
-| Ensayo | Concurrencia / duración | RPS | p50 / p95 / p99 (ms) | Éxito / fallos / no-2xx | CPU / RAM máxima | Evidencia | Resultado |
-|---|---|---|---|---|---|---|---|
-| Baseline funcional | — | — | — | — | — | pendiente | pendiente |
-| Smoke | 5 / 30 s propuestos | — | — | — | — | pendiente | pendiente |
-| Carga | 20 / 10 min propuestos | — | — | — | — | pendiente | pendiente |
-| Estrés | niveles progresivos | — | — | — | — | pendiente | pendiente |
-| Spike | 5 → 300 → 5 propuesto | — | — | — | — | pendiente | pendiente |
-| Soak | 20 / 2 h propuestos | — | — | — | — | pendiente | pendiente |
-| Caché / sin caché | comparación | — | — | — | — | pendiente | pendiente |
+La salida de `bash scripts/verify.sh | tee results/baseline.txt` mostró:
+
+- **Galera:** `galera1`, `galera2`, `galera3` con `wsrep_local_state_comment=Synced`, `wsrep_cluster_status=Primary`, `wsrep_cluster_size=3` y `wsrep_ready=ON`.
+- **MongoDB:** `mongo2` PRIMARY; `mongo1` y `mongo3` SECONDARY; salud 1 para los tres.
+- **Redis Sentinel:** `CKQUORUM cachemaster` satisfactorio en los tres Sentinel; en ese instante los tres reportaron master `172.28.0.23:6379`.
+- **API profunda:** `{"sql":true,"mongo":true,"cache":true}`.
+- **Balanceo de presentación y aplicación:** las cabeceras `x-request-trace` mostraron `webnode1/2/3` y `app1/2/3` durante la verificación; respuestas HTTP 200.
+- **Caché:** se observó al menos un `cache miss` que consultó Galera vía proxy y posteriores `cache hit`.
+- **Keepalived:** después de recrear solamente los cuatro contenedores, figuraban `Up` durante aproximadamente 29 minutos; aún falta ensayar el desplazamiento de VIP tras fallo del balanceador.
+- **Nagios:** previamente registró alertas CRITICAL/OK; se confirmó posteriormente `Up 3 minutes` en `docker compose ps -a nagios`. Aún no se han cuantificado MTTD/MTTR.
+
+Evidencias **locales a recopilar y versionar sin secretos**: `results/baseline.txt`, capturas de cabeceras/estado, `results/images.txt`, `results/image-digests.txt`, archivos de pruebas de carga y muestras de recursos.
+
+## Primera prueba medida: Smoke / ApacheBench
+
+Ejecutada en el servidor VM con `bash tests/load.sh "http://192.168.1.88" 5 30` contra `/api/products/cheapest`.
+
+| Métrica | Resultado observado |
+|---|---:|
+| Fecha | 2026-10-24 |
+| Concurrencia | 5 |
+| Duración | 30.001 s |
+| Peticiones completadas | 9107 |
+| Fallidas según ApacheBench | 0 |
+| Solicitudes por segundo | 303.56 |
+| Tiempo medio por petición | 16.471 ms |
+| Latencia p50 | 14 ms |
+| Latencia p95 | 34 ms |
+| Latencia p99 | 55 ms |
+| Máxima | 136 ms |
+| Ruta de evidencia en la VM | `results/ab-20261024T153524Z-c5/` |
+
+**Interpretación limitada:** ApacheBench contabilizó cero peticiones fallidas en este ensayo. No se aportó por separado conteo de respuestas no-2xx ni comprobación del contenido de cada respuesta. Estos resultados no representan el rendimiento desde otra computadora de la LAN.
+
+## Primer ensayo de tolerancia a fallos: caída controlada de `web1`
+
+- **Fecha:** 2026-10-24 (marcas temporales UTC).
+- **Sonda:** `python3 tests/probe.py http://192.168.1.88 --seconds 150 --out results/sonda-fallo-web1.csv`, ejecutada en la VM.
+- **Inyección:** `bash scripts/fault.sh stop web1 30`.
+- **Inicio registrado de la inyección:** `2026-10-24T15:57:43Z`; **recuperación solicitada:** `2026-10-24T15:58:16Z`. Estas marcas no equivalen por sí solas a MTTD ni MTTR medidos.
+- **Muestras de sonda:** 145; **muestras exitosas:** 144; **muestras fallidas:** 1; **disponibilidad muestreada:** **99.3103448275862 %**.
+- **Verificación posterior:** `docker compose ps web1 web2 web3` mostró los tres `Up`; `bash scripts/verify.sh > results/verification-after-web1.txt 2>&1` devolvió **código 0**.
+- **Observación posterior:** las últimas cinco muestras del CSV reportaron HTTP 200 con rutas que incluyeron distintos `webnode` y `app`.
+- **Nagios:** comprobación independiente previa con estado `Up 3 minutes`.
+- **Evidencia local en la VM:** `results/sonda-fallo-web1.csv`, `results/verification-after-web1.txt`, archivo `results/fault-*-web1.log` generado por el script. **Estos archivos todavía deben subirse después de revisar que no contengan secretos.**
+
+**Interpretación:** se observó continuidad en 144 de 145 comprobaciones y recuperación del nodo detenido. No se puede atribuir aún la única muestra fallida exactamente al instante de caída sin inspeccionar su marca temporal. Tampoco se puede afirmar disponibilidad de peticiones bajo carga: `probe.py` es una sonda aproximadamente una vez por segundo, no un generador de carga. Como la sonda se ejecutó en la VM, no representa una medición desde la computadora de un compañero.
+
+**Precaución observada:** al recuperar `web1`, `docker compose start web1` también desencadenó comprobaciones y nuevas ejecuciones de `mongo-init` y `catalog-init` por dependencias de Compose. Las siguientes pruebas deben supervisar ese comportamiento y evitar atribuir interrupciones exclusivamente al componente elegido hasta revisar los eventos.
+
+## Resumen de ensayos
+
+| Ensayo | Concurrencia / duración | RPS | p50 / p95 / p99 (ms) | Éxito / fallos / no-2xx | CPU / RAM máxima | Evidencia | Estado |
+|---|---|---:|---|---|---|---|---|
+| Baseline funcional | Verificación de servicios | — | — | API 200; subsistemas según arriba | Pendiente | `results/baseline.txt` (VM) | Comprobado |
+| Smoke local | 5 / 30 s | 303.56 | 14 / 34 / 55 | 9107 completas / 0 fallidas por ab / no-2xx no informado | Pendiente | `results/ab-20261024T153524Z-c5/` (VM) | Medido |
+| Funcional remoto | Equipo externo | — | — | — | — | Pendiente | No ejecutado / no aportado |
+| Carga | 20 / 600 s | — | — | — | — | Pendiente | No ejecutado |
+| Estrés | 10, 25, 50, 100 / 60 s cada nivel | — | — | — | — | Pendiente | No ejecutado |
+| Spike | 5 → nivel acordado → 5 | — | — | — | — | Pendiente | No ejecutado |
+| Soak | 20 / 7200 s propuestos | — | — | — | — | Pendiente | No ejecutado |
+| Caché / sin caché | 20 / 120 s cada corrida | — | — | — | — | Pendiente | No ejecutado |
+| Fallo controlado de web1 | 30 s de parada solicitada; sonda 150 s | — | — | 144 / 145 muestras exitosas; 99.31 % muestreado | Pendiente | `results/sonda-fallo-web1.csv` (VM) | Ejecutado; una muestra fallida |
+| Failover API/LB/SQL/Redis/Mongo | Un fallo por escenario | — | — | — | — | Pendiente | No ejecutado |
+| Chaos Monkey, red, recursos | Escenarios controlados | — | — | — | — | Pendiente | No ejecutado |
+| Nagios / alertas / recuperación | Capturas, logs, CSV | — | — | — | — | Pendiente | No cuantificado |
 
 ## Registro de cada fallo
 
-Copiar esta ficha para cada escenario de los puntos 3–5:
+Copiar esta ficha por escenario y añadir ruta de evidencia:
 
 - Hipótesis y umbral acordado:
 - Servicio y rol real antes del fallo:
-- Carga y ruta exacta (¿SQL sin caché? ¿reseñas MongoDB?):
-- Hora de inyección, detección, primera recuperación y recuperación estable:
-- MTTD / MTTR / interrupción observada y resolución de muestreo:
-- Pérdida de quorum esperada o no; elecciones; cambio de VIP/master/backend:
-- Disponibilidad por solicitudes y disponibilidad muestreada (distinguir):
-- p95/p99, presupuesto de error y ventana:
+- Carga y ruta exacta (`?nocache=1` para SQL; reseñas para MongoDB):
+- Hora UTC de inyección, detección, recuperación inicial y estable:
+- MTTD / MTTR / duración observada / resolución de muestreo:
+- Cambio de VIP/master/backend y quórum:
+- Disponibilidad por solicitud vs disponibilidad muestreada:
+- p95/p99 y presupuesto de error con ventana:
 - Datos escritos antes/después y evidencia de persistencia:
-- Estado Nagios, alerta omitida/falsa y logs relacionados:
-- Recuperación aplicada y estado final de los tres miembros:
-- Conclusión: hipótesis confirmada/rechazada/no ejecutada; causas y próximos pasos:
+- Alertas Nagios y logs correspondientes:
+- Recuperación aplicada y estado final:
+- Conclusión: confirmada, rechazada o no ejecutada:
 
 ## Cobertura de la entrega
 
 | Punto | Evidencia requerida | Estado |
 |---|---|---|
-| 1 | Salud, headers, consistency SQL, reseña MongoDB, caché | Pendiente |
-| 2 | Reportes crudos de carga/estrés/spike/soak y recursos | Pendiente |
-| 3 | Matriz de fallos con RTO, quorum, VIP, Redis/Mongo primary | Pendiente |
-| 4 | Hipótesis, Monkey, red, recurso, compuesto y recuperación; exclusiones explícitas | Pendiente |
-| 5 | Línea temporal Nagios/logs/sonda, MTTD/MTTR y error budget | Pendiente |
+| 1 | Salud, headers, consistencia SQL, reseña MongoDB, caché | Salud/headers/caché observados; consistencia y reseña específica pendientes |
+| 2 | Carga remota/estrés/spike/soak con recursos | Solo smoke local medido |
+| 3 | Failover de web/API/LB/Galera/proxy/Redis/Mongo y continuidad | web1 medido (144/145); otras capas pendientes |
+| 4 | Chaos Monkey, red, recursos y límites | Pendiente |
+| 5 | Nagios, MTTD/MTTR, alertas y presupuesto de error | Pendiente |
 
-## Conclusión a redactar después de medir
+## Ejecución y recolección
 
-Explicar qué fallos de contenedor se toleraron, cuánto tardó la recuperación, primer cuello de botella, cambios necesarios y límites de una sola VM. No escribir que hay alta disponibilidad de host ni que se ejecutó en AWS. Anotar los ensayos no realizados (por ejemplo reloj/disco) y su justificación.
+Seguir `docs/PRUEBAS.md` **por etapas**, no todos los fallos a la vez. Confirmar un baseline sano antes y después de cada ensayo. Guardar `results/` con salidas reales, excluir contraseñas y secretos. Enviar a GitHub solamente los resultados inspeccionados. No utilizar `docker compose down -v`.
+
+## Conclusión provisional
+
+La VM ha demostrado funcionamiento de clústeres Galera y MongoDB, quórum Redis Sentinel, balanceo entre tres web/API y una primera carga local de 9107 peticiones sin fallos reportados por ApacheBench. Se observó continuidad parcial (144/145 muestras) y recuperación en la caída de un servidor web. **No se ha demostrado aún tolerancia a caída de un balanceador, HA de host, disponibilidad externa sostenida o Chaos Engineering**. Una sola VM y el contenedor de entrada constituyen puntos únicos de fallo; no se afirma despliegue en AWS ni disponibilidad de producción.
