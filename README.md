@@ -14,9 +14,8 @@ Proyecto académico basado en [tuxtter/distributedsystems](https://github.com/tu
 
 ## Diagrama
 
-![Arquitectura de tres capas](docs/arquitectura.jpg)
+<img width="5189" height="4789" alt="Diagrama en blanco" src="https://github.com/user-attachments/assets/2f796f10-6bbe-4dc2-ac00-1765a00ae0f0" />
 
-[Descargar JPG](docs/arquitectura.jpg). Estilo visual cloud; infraestructura local, no AWS real. Fuente reproducible: `scripts/render-diagram.py` (Python + Pillow; ejecutar desde la raíz).
 
 ## Componentes
 
