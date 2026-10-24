@@ -61,10 +61,10 @@ docker compose version
 
 ## 4. Obtener tu fork
 
-Ya se identificó el fork `EdgarAntonioPerezFlores/distributedsystems`, cuyo padre es `tuxtter/distributedsystems`. Se prepara la rama `proyecto-ha-virtualbox` para esta entrega.
+Ya se identificó el fork `EdgarAntonioPerezFlores/distributedsystems`, cuyo padre es `tuxtter/distributedsystems`. Para continuar esta entrega se utiliza la rama principal `main`.
 
 ```bash
-git clone --branch proyecto-ha-virtualbox https://github.com/EdgarAntonioPerezFlores/distributedsystems.git
+git clone --branch main https://github.com/EdgarAntonioPerezFlores/distributedsystems.git
 cd distributedsystems
 git remote add upstream https://github.com/tuxtter/distributedsystems.git
 ```
@@ -123,7 +123,7 @@ En Ubuntu/WSL de su equipo:
 ```bash
 sudo apt update
 sudo apt install -y apache2-utils siege curl git python3
-git clone --branch proyecto-ha-virtualbox https://github.com/EdgarAntonioPerezFlores/distributedsystems.git
+git clone --branch main https://github.com/EdgarAntonioPerezFlores/distributedsystems.git
 cd distributedsystems
 export BASE=http://192.168.1.80   # cambiar por tu dirección real
 python3 tests/functional.py "$BASE"
@@ -162,7 +162,7 @@ mkdir -p docs/evidencias
 git add docs
 git diff --cached
 git commit -m "Documentar resultados reales de carga y failover"
-git push origin proyecto-ha-virtualbox
+git push origin main
 ```
 
 Si `git push` pide autenticación, usa GitHub CLI (`gh auth login`) o una clave SSH configurada en tu cuenta. No uses la contraseña de GitHub como contraseña de Git ni pegues tokens en el repositorio.
