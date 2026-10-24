@@ -85,6 +85,10 @@ El CSV `sonda-fallo-web1.csv` quedó ratificado con **144/145 = 99.31 % de muest
 
 La salida de un nuevo análisis del CSV local informa **90 filas: 89 correctas, 0 fallidas, 1 incompleta**. Las primeras trazas HTTP 200 muestran `app1` y `app2`. Se informó **100 % de disponibilidad entre los registros válidos**, sin clasificar la fila incompleta. **Esto no demuestra que `app1` haya sufrido una caída controlada**; no se localizó `fault-*-app1.log` en el inventario de resultados. Para cerrar el ensayo: inspeccionar la fila incompleta y recuperar evidencia de una inyección real de fallo más la verificación posterior. No repetir sin necesidad antes de evaluar salud/disco (95 % de ocupación).
 
+### Sonda de las tres API: fila vacía y distribución observada (24-10-2026)
+
+Confirmado en el CSV local: 90 filas leídas; **89 válidas (`ok=True`)**, ninguna con `ok=False`, y **una fila final vacía (número de línea 91)**. Las trazas prueban distribución entre las tres API: `app1` 32, `app2` 44, `app3` 13. No es evidencia de caída/reinicio de `app1`, pues aún no se encontró su registro de inyección. Próximo paso seguro: inspeccionar/limpiar exclusivamente caché APT y capturar `docker stats` basal antes de pruebas de carga o caos; disco 95 % y 1.3 GB libres.
+
 ## D. Checklist de publicación final
 
 - [x] Código/IaC, arquitectura JPG y documentación base en `main`.
