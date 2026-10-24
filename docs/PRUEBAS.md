@@ -251,6 +251,10 @@ Registrar los escenarios no ejecutados como tales y acordar alcance con el profe
 
 ## 5. Observabilidad y alertas
 
+**Evidencia visual real (24-10-2026):** desde Windows se registraron tres estados de Nagios: 24 hosts UP/30 servicios OK, luego 23 hosts UP/**1 DOWN**/30 servicios OK, y después 24 hosts UP/30 servicios OK. Esto demuestra la aparición y desaparición de un fallo **de host** en el panel; no demuestra un servicio en `CRITICAL`. Consultar [resultados](RESULTADOS.md#evidencias-de-nagios-host-down-detectado-y-recuperación-en-windows-24-10-2026) y la [galería de capturas](evidencias/README.md). Los PNG binarios se incorporan al repositorio desde la VM mediante el paquete preparado.
+
+
+
 Nagios revisa TCP por instancia y chequeos de salud de Galera/API. Nuevos checks usan intervalo nominal de un minuto y reintento 0.2 minutos (según unidad de intervalo de Nagios); un fallo de 10 s puede no detectarse. Para esta prueba parar `web1` por 120 s, recoger transición y restauración. La detección y alertas son estados en Nagios; no se configuró envío de correo.
 
 ```bash
