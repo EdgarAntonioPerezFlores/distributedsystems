@@ -256,6 +256,20 @@ Tras el aborto previo de la prueba real de Chaos Monkey a causa del HTTP 503, el
 
 **Evidencias locales VM:** `results/chaos-web-real/summary.json`, `results/chaos-web-real/ejecucion.txt`. No confundir con el dry-run previo.
 
+### Chaos Monkey real: falla y recuperación automática de app1 (25-10-2026 UTC)
+
+**Preflight del operador:** `app1`, `app2` y `app3` activos; `galera1`, `galera2` y `galera3` reportaron `Synced/Primary/3`; tres comprobaciones consecutivas `GET /api/health/deep` mostraron `{"sql":true,"mongo":true,"cache":true}`.
+
+**Inyección real:** Chaos Monkey `DRY_RUN=false GROUP=app TARGETS=app1 ACTION=stop MAX_CONCURRENT=1 INTERVAL=120 DOWNTIME=10 DURATION=35 PROBE_INTERVAL=1 PROBE_URL=http://127.0.0.1/api/products/cheapest?nocache=1`. Eventos: **`stop app1` OK a t=4.9 s** y **`restore app1` OK a t=16.5 s** (aproximadamente **11.6 s** entre eventos, no equivalente a una medición exacta de indisponibilidad del proceso). La herramienta completó en t=45.6 s, con recuperación automática registrada.
+
+**Métricas de la sonda:** `Faults injected=1`; `Probes sent=45`; `Probes failed=0`; **45/45 exitosas, disponibilidad muestreada 100.0 %**; `Longest outage s=0.0`; `Avg probe latency ms=12.6`. No inferir SLA de disponibilidad ni prueba de escritura MongoDB/SQL a partir de esta sonda GET.
+
+**Postflight:** `app1`, `app2`, `app3` quedaron `Up` y `GET /api/health/deep` devolvió **HTTP 200** con `{"sql":true,"mongo":true,"cache":true}`.
+
+**Estado Chaos Monkey:** dos ensayos de parada real controlada: `web1` **42/43, 97.67 %** y `app1` **45/45, 100.0 %**. Constituyen evidencia real del apartado de fallos de contenedor del punto 4 del plan, **pero el punto 4 completo sigue parcialmente pendiente** (red, recursos, escenarios compuestos, etc.). No ensayar paradas de Galera mientras sigan observándose pérdidas transitorias de quórum.
+
+**Archivos locales en VM:** `results/chaos-app-real/summary.json` y `results/chaos-app-real/ejecucion.txt`.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
