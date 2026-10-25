@@ -84,6 +84,12 @@ Se reiniciaron **solo** `app1`, `app2` y `app3`, que posteriormente aparecieron 
 
 **Evaluación:** nivel c25 completado sin fallos registrados por ApacheBench, cumpliendo objetivo indicativo `p95 < 200 ms`. No es una prueba hasta saturación ni valida por sí sola todos los códigos HTTP. Todavía faltan escalones de estrés (p. ej., c50 y c100, si el nivel previo es estable), CPU/RAM simultáneos, carga sin caché y otras familias del plan. Prueba local a `127.0.0.1`; no se ha medido aún el cliente externo.
 
+### Estrés escalonado: nivel c50 durante 60 segundos (25-10-2026 UTC)
+
+**Ejecución real en Ubuntu/VirtualBox:** nivel de estrés sobre catálogo con caché Redis a través de presentación web/API: `ab -k -c 50 -t 60 -n 1000000 http://127.0.0.1/api/products/cheapest`. **Duración 60.014 segundos**, **28 854** solicitudes completas, **0** fallidas reportadas por ApacheBench, **480.79 req/s**, latencia media **103.996 ms**, percentiles **p50=87 ms, p95=235 ms, p99=325 ms**, máximo **750 ms**, `Keep-Alive requests: 0`. Salud posterior a la carga: `{"sql":true,"mongo":true,"cache":true}`. Comando indicado previamente guardaba la evidencia local como `results/estres/estres-50.txt`; no consta subida de ese archivo.
+
+**Comparación contra nivel c25:** c25 = 510.86 req/s, p95=117 ms, 0 fallidas en 60.007 s; c50 = 480.79 req/s, p95=235 ms, 0 fallidas en 60.014 s. **El objetivo indicativo p95<200 ms ya no se cumple en c50**, aunque no se registraron errores AB. Por esta razón, **se recomienda parar aquí el escalamiento antes de intentar c100** hasta medir consumo CPU/RAM y revisar códigos HTTP y trazas; no afirmar que 50 es el límite físico del sistema ni que existe 0% de errores HTTP por petición. El objetivo de estrés escalonado está parcialmente cubierto; c100 permanece sin ejecutar y su omisión se justifica por la superación del umbral de latencia.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
