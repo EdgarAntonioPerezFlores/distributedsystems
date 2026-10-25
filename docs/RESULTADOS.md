@@ -57,6 +57,27 @@ Se reiniciaron **solo** `app1`, `app2` y `app3`, que posteriormente aparecieron 
 
 **Interpretación:** cero fallos informados por ApacheBench y p95 inferior al objetivo de 200 ms, pero **no** certifica la prueba sostenida de 10 minutos. El endpoint usa Redis y la prueba se ejecutó desde el mismo host, sin estadísticas CPU/RAM durante la carga. Para cubrir la duración correcta, ejecutar `ab -k -c 20 -t 600 -n 1000000 http://127.0.0.1/api/products/cheapest` y verificar que `Time taken for tests` sea cercano a 600 segundos. **El orden importa: especificar `-t 600` antes de `-n 1000000`; en esta versión de ApacheBench `-t` establece internamente `-n 50000` y puede sobrescribir `-n` si aparece al final**; registrar los resultados por separado. La ejecución previa quedó guardada y no debe sobrescribirse.
 
+### Carga sostenida de 10 minutos completada: c20/t600 (25-10-2026 UTC)
+
+**Prueba efectivamente completada desde Ubuntu/VirtualBox:** `ab -k -c 20 -t 600 -n 1000000 http://127.0.0.1/api/products/cheapest`, con evidencia local `results/carga/carga-real-20usuarios-600s.txt`. **Duración real 600.002 s**, por lo que ahora sí se cumplió el objetivo de 10 minutos (a diferencia del intento anterior detenido por límite de 50 000 solicitudes).
+
+| Indicador | Valor |
+|---|---:|
+| Concurrencia | 20 |
+| Solicitudes completadas | **302 663** |
+| Solicitudes fallidas informadas por ApacheBench | **0** |
+| Duración real | **600.002 segundos** |
+| Throughput | **504.44 solicitudes/s** |
+| Tiempo medio por solicitud | **39.648 ms** |
+| p50 / p95 / p99 | **33 / 87 / 134 ms** |
+| Latencia máxima | **2871 ms** |
+| Keep-Alive contabilizados | **0** incluso con opción `-k` |
+| Total transferido | **447 035 229 bytes** |
+| Transferencia | **727.59 KiB/s** |
+| Códigos no-2xx | La salida compartida no contiene comprobación independiente de todos los códigos por petición. |
+
+**Resultado:** cumple el criterio de latencia de referencia `p95 < 200 ms` (**87 ms**) y no reporta fallos de ApacheBench durante los 10 minutos. No se recogió aún CPU/RAM bajo carga ni disponibilidad externa ni códigos individuales de todas las respuestas; la ruta del catálogo usa caché Redis. La respuesta máxima de 2871 ms muestra que existieron latencias atípicas. **La prueba sostenida c20/t600 queda registrada como ejecutada**, sin confundirla con ensayo de estrés, spike, soak o failover. Su archivo se mantiene local en la VM.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
@@ -407,7 +428,7 @@ Ejecutada en el servidor VM con `bash tests/load.sh "http://192.168.1.88" 5 30` 
 | Funcional remoto | Equipo externo | — | — | — | — | Pendiente | No ejecutado / no aportado |
 | Carga corta c20/t60 | 20 / 60 s | 411.39 | 39 / 116 / 167 | 24692 completas / 0 fallidas por ab / no-2xx no verificado por solicitud | Pendiente | `results/carga/carga-20usuarios-60s.txt` (VM) | Medido | 
 | Ensayo c20 con objetivo 600 s, interrumpido por límite de ab | 20 / **99.605 s** (50 000 req) | **501.98** | **32 / 90 / 142** | 50 000 completas / 0 fallidas por ab / no-2xx no verificado individualmente | Pendiente | `results/carga/carga-20usuarios-600s.txt` (VM) | Medido, **no 10 min** |
-| Carga | 20 / 600 s | — | — | — | — | Pendiente | No ejecutado |
+| Carga sostenida | **20 / 600.002 s** | **504.44** | **33 / 87 / 134** | **302 663 completas / 0 fallidas por ab / HTTP no-2xx sin verificación individual** | No recogido | `results/carga/carga-real-20usuarios-600s.txt` (VM) | **Ejecutado** |
 | Estrés | 10, 25, 50, 100 / 60 s cada nivel | — | — | — | — | Pendiente | No ejecutado |
 | Spike | 5 → nivel acordado → 5 | — | — | — | — | Pendiente | No ejecutado |
 | Soak | 20 / 7200 s propuestos | — | — | — | — | Pendiente | No ejecutado |
@@ -463,7 +484,7 @@ Copiar esta ficha por escenario y añadir ruta de evidencia:
 | Punto | Evidencia requerida | Estado |
 |---|---|---|
 | 1 | Salud, headers, consistencia SQL, reseña MongoDB, caché | **Comprobado en la VM:** salud y balanceo, escritura/lectura Galera, reseña Mongo vía API y caché; cliente remoto con carga instrumentada pendiente |
-| 2 | Carga remota/estrés/spike/soak con recursos | **Smoke local medido** (9,107 peticiones) y **carga corta c20/60s** (24,692 peticiones); ensayos externos y prolongados pendientes |
+| 2 | Carga remota/estrés/spike/soak con recursos | **Smoke local medido** (9,107 peticiones), **carga corta c20/60s** (24,692) y **carga sostenida c20/600s** (302,663 peticiones); estrés, spike, soak, medición de recursos y ensayos externos pendientes |
 | 3 | Failover de web/API/LB/Galera/proxy/Redis/Mongo y continuidad | **web1 parado y recuperado;** en primera campaña 144/145 muestras exitosas; failover de las demás capas pendiente |
 | 4 | Chaos Monkey, red, recursos y límites | **No ejecutado** en esta campaña; no atribuir resultados |
 | 5 | Nagios, MTTD/MTTR, alertas y presupuesto de error | **Tres PNG host DOWN → UP y logs del mismo ensayo con servicio CRITICAL HARD y recuperación OK HARD**; tiempos de una ejecución calculados, pero no media estadística MTTD/MTTR ni error budget con carga |
