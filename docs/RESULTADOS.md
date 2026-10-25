@@ -214,6 +214,12 @@ La preparación del ensayo de parada reversible de `galera2` verificó la existe
 
 **Estado de la prueba planificada de Galera2:** continúa **no ejecutada**; el script había cancelado el ensayo en preflight cuando `galera3` no estaba Synced. Antes de inyectar un nuevo fallo, comprobar estabilidad mantenida de los tres miembros (3/Primary/Synced/ON), quórum y margen de recursos, debido a la partición transitoria espontánea. No hacer bootstrap, parar varios miembros ni eliminar volúmenes.
 
+### Monitorización de estabilidad Galera: segunda pérdida transitoria de quorum (25-10-2026 UTC)
+
+**Prueba observacional de seis rondas, sin inyección de fallos**, entre **03:00:34 y 03:01:36 UTC**. En las rondas 1 (03:00:34), 2 (03:00:46), 4 (03:01:12), 5 (03:01:24) y 6 (03:01:36), `galera1/2/3` devolvieron `wsrep_local_state_comment=Synced`, `wsrep_cluster_size=3`, `wsrep_cluster_status=Primary`, `wsrep_ready=ON`. En la **ronda 3 (03:01:00 UTC)**, `galera1` respondió Synced/3/Primary/ON, **pero `galera2` y `galera3` respondieron Initialized/1/non-Primary/OFF**. Las consultas fueron secuenciales, por lo que la fotografía no demuestra condiciones de quorum simultáneas exactas en los tres miembros.
+
+Al final de la observación, `GET /api/health/deep` devolvió **HTTP 200** con `{"sql":true,"mongo":true,"cache":true}`. **Conclusión:** hubo **otro episodio transitorio de inestabilidad espontánea** después del observado a las 02:55:55 UTC. El sistema se recuperó, pero **no se aprueba estabilidad continua** y la prueba programada de failover con `galera2` **continúa no ejecutada**. No atribuir causa a red, CPU, VM o split-brain sin diagnóstico. **Medida preventiva:** evitar inyecciones sobre Galera hasta revisar logs WSREP de los tres nodos entre 03:00:50 y 03:01:20 UTC, estado de recursos/host, y mantener quórum estable durante una ventana superior. No ejecutar bootstrap ni reiniciar todo Docker ni manipular volúmenes.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
