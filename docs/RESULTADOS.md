@@ -41,6 +41,23 @@ Los logs Galera mostraron `WSREP: Received NON-PRIMARY` en los tres nodos. El op
 
 **No hay evidencia todavía de corrupción ni pérdida de los datos almacenados; tampoco un candidato seguro para bootstrap.** Una recuperación requiere parar de forma controlada los servicios Galera si siguen activos, preservar los tres volúmenes, ejecutar `mariadbd --wsrep-recover` en forma **offline** en cada copia/nodo original ya detenido y comparar posiciones recuperadas antes de escoger un único candidato. No se debe suponer que `galera1` es el más avanzado ni modificar `safe_to_bootstrap` a ciegas. Prohibido `down -v` o `first-start.sh` con los volúmenes existentes. Para el orden de recuperación ver [OPERACION.md](OPERACION.md).
 
+### Respaldo Galera y posiciones WSREP recuperadas en copias (25-10-2026 UTC)
+
+El operador detuvo **galera3**, luego **galera2** y finalmente **galera1** y creó tres respaldos de volumen mediante `nginx:alpine` y `tar -czf`, guardados solo en la VM en `backups/galera-resguardo/`:
+- `galera1.tar.gz` ~1022 KB
+- `galera2.tar.gz` ~997 KB
+- `galera3.tar.gz` ~1004 KB
+
+El bloque finalizó con éxito y confirmó **70 GB totales, 46 GB libres (33 % ocupados)**. Después un procedimiento offline creó copias temporales en volúmenes `galera-diagnostico-<marca>-<n>`, verificó los archivos con `gzip -t` y `tar -tzf`, y ejecutó en **copias, no volúmenes productivos**, `/opt/bitnami/mariadb/sbin/mariadbd --wsrep-recover --datadir=/bitnami/mariadb/data --skip-networking`. Los tres procesos terminaron reportando recuperación:
+
+| Nodo | Posición recuperada |
+|---|---|
+| galera1 | `00000000-0000-0000-0000-000000000000:12` |
+| galera2 | `00000000-0000-0000-0000-000000000000:12` |
+| **galera3** | **`00000000-0000-0000-0000-000000000000:46`** |
+
+**Decisión:** `galera3` es el candidato más avanzado **según estas salidas**. El UUID nulo en los tres nodos es una particularidad a vigilar y no demuestra por sí solo que toda la información esté íntegra. Aún **no consta ningún arranque de recuperación completado**, ni validación SQL posterior, ni reintegración de galera1/2. Iniciar solo `galera3` en una configuración **temporal** mediante variables de la imagen Bitnami `MARIADB_GALERA_CLUSTER_BOOTSTRAP=yes` y `MARIADB_GALERA_FORCE_SAFETOBOOTSTRAP=yes`, con `MARIADB_GALERA_CLUSTER_ADDRESS=gcomm://`, sin arrancar dependencias ni modificar los otros dos nodos. Verificar `wsrep_cluster_status=Primary`, `wsrep_cluster_size=1`, datos SQL, y solo después reintegrar los demás. Quitar el override temporal al recuperar tamaño 3. No ejecutar `down -v` ni `first-start.sh`.
+
 ## Equipo y entorno
 
 - Servidor: Ubuntu en una VM de VirtualBox; Docker Compose, proyecto `distributed-ha-lab`.
