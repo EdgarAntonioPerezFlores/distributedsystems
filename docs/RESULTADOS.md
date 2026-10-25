@@ -290,6 +290,12 @@ Tras reiniciar el contenedor **existente** de Nagios, el operador comprobó que 
 
 **Alcance de esta prueba:** `status.dat` con 24/30 bloques demuestra inventario de estados **pero no que todos estén UP/OK ni que las fechas de sus últimos checks sean recientes**; eso debe auditarse aparte. Las advertencias previas sobre contactos sin definir siguen sin resolverse, por lo que no afirmar envíos de alertas por correo. Nagios estuvo detenido unas horas y no puede afirmarse que presenciara los dos Chaos Monkey reales recientes. Las advertencias de rsyslog persisten en el historial, pero no impidieron estas comprobaciones. **Monitoreo básico restaurado; punto 5 parcialmente documentado, pendiente evaluación final de estado, cobertura temporal y MTTD/MTTR.**
 
+### Auditoría de Nagios: 24 hosts UP, 30 servicios OK, salud HTTP 200 (25-10-2026)
+
+El operador exportó `/opt/nagios/var/status.dat` desde el contenedor Nagios a `results/observabilidad/status-nagios.txt` en Ubuntu y ejecutó un analizador de bloques `hoststatus` y `servicestatus`. Resultado de esta fotografía: **24/24 hosts con `current_state=UP`**, **30/30 servicios con `current_state=OK`**, sin elementos reportados como pendientes de comprobación (`has_been_checked=0`) ni fuera de estado nominal. `GET /api/health/deep` devolvió **HTTP 200**, `{"sql":true,"mongo":true,"cache":true}`.
+
+**Alcance:** el análisis de esta ejecución identifica estados actuales y `has_been_checked`; no valida la antigüedad de los últimos checks, aunque el script leyó `last_check`. La ausencia de estados distintos de UP/OK **no prueba** ausencia de problemas entre sondeos. Las alertas históricas de Nagios evidencian detección, pero **no se han medido promedios estadísticos de MTTD/MTTR de múltiples inyecciones ni verificado envío de notificaciones externas**. Se recuperó el monitoreo sin recrear el contenedor. Aún quedan pruebas de rendimiento (spike, soak, capacidad por capa), escenarios Chaos adicionales y failover Galera suspendido por cortes transitorios de WSREP.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
