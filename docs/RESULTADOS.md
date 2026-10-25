@@ -200,6 +200,12 @@ La sonda original informó **91 de 92 muestras exitosas, 98.913 % de disponibili
 
 **Evaluación final Mongo:** se confirma recuperación funcional HTTP profunda en los tres nodos, junto con la reincorporación anterior de `mongo1` como SECONDARY de `mongo2` PRIMARY y sonda de reseñas **97/97 exitosas**. El HTTP 503 inmediatamente al final del fallo fue **transitorio**, aunque **no se identificó su causa precisa**. No afirmar 100% de disponibilidad global ni restaurabilidad del respaldo lógico no ensayado.
 
+### Preflight Galera2 abortado: Galera3 no-Primary y wsrep_ready OFF (25-10-2026 UTC)
+
+La preparación del ensayo de parada reversible de `galera2` verificó la existencia **pero no integridad/restaurabilidad** de tres archivos de respaldo local `backups/galera-resguardo/galera1.tar.gz` (1022K), `galera2.tar.gz` (997K) y `galera3.tar.gz` (1004K), fechados 24-10-2026. En las consultas sucesivas de WSREP, `galera1` y `galera2` reportaron `Synced`, `wsrep_cluster_size=3`, `wsrep_cluster_status=Primary`, `wsrep_ready=ON`; **`galera3` reportó `Initialized`, `wsrep_cluster_size=1`, `wsrep_cluster_status=non-Primary`, `wsrep_ready=OFF`**. El chequeo previo canceló el ensayo: **no se ejecutó `docker stop`, no hubo sonda ni fallo inducido de `galera2`**, y **el punto de failover Galera aún permanece pendiente**.
+
+**Acción requerida:** confirmar estado actual de los tres nodos con marcas horarias, estado contenedores/sidecars y logs WSREP del tercer nodo; no detener nodos adicionales, no reiniciar el stack y no bootstrapear un nodo sin diagnóstico de quorum y respaldo verificable. No afirmar clúster sano ni pérdida de datos a partir de estas lecturas sucesivas.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
