@@ -194,6 +194,12 @@ La sonda original informó **91 de 92 muestras exitosas, 98.913 % de disponibili
 
 **Archivos de evidencia en la VM:** `results/failover/sonda-mongo1.csv`, `results/failover/resumen-mongo1.txt`, respaldo lógico indicado arriba. No se ha hecho prueba de restauración, y el respaldo no está confirmado fuera de la VM.
 
+### Recuperación de salud profunda tras failover de MongoDB (25-10-2026 UTC)
+
+**Verificación posterior a la incidencia HTTP 503 del ensayo MongoDB:** tres llamadas consecutivas a `http://127.0.0.1/api/health/deep` devolvieron **HTTP 200** con `{"sql":true,"mongo":true,"cache":true}`. Consultas directas a **app1, app2 y app3** respondieron en cada nodo **`/health` HTTP 200**, **`/health/deep` HTTP 200** y **`/products/ST-001/reviews` HTTP 200**. La búsqueda filtrada en los logs de API para la ventana **02:47:50–02:49:30 UTC** no imprimió líneas de error coincidentes; eso no demuestra ausencia completa de errores.
+
+**Evaluación final Mongo:** se confirma recuperación funcional HTTP profunda en los tres nodos, junto con la reincorporación anterior de `mongo1` como SECONDARY de `mongo2` PRIMARY y sonda de reseñas **97/97 exitosas**. El HTTP 503 inmediatamente al final del fallo fue **transitorio**, aunque **no se identificó su causa precisa**. No afirmar 100% de disponibilidad global ni restaurabilidad del respaldo lógico no ensayado.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
