@@ -226,6 +226,12 @@ El operador ejecutó **seis verificaciones consecutivas de WSREP** durante aprox
 
 **Evaluación:** pese a una recuperación aparentemente espontánea, la prueba **NO demuestra estabilidad continua del clúster**; es el segundo episodio observado de `non-Primary` en nodos Galera durante las comprobaciones. **No se ejecutó el ensayo de detener `galera2`; queda pendiente por riesgo de pérdida de quórum.** Se deben examinar logs `WSREP` de los tres nodos, eventos de Docker, retrasos/recursos del host en la ventana 03:00:40–03:01:20 UTC; no bootstrapear, reiniciar el stack ni detener otro nodo de datos mientras la causa siga sin identificar. Los archivos `backups/galera-resguardo/` existen, pero no se ha validado restauración desde ellos. Mientras tanto se pueden adelantar tareas de documentación y observabilidad sin inyectar fallos.
 
+### Chaos Monkey: dry-run sobre web1/web2/web3 (25-10-2026 UTC)
+
+Se ejecutó `DRY_RUN=true GROUP=web ACTION=stop MAX_CONCURRENT=1 INTERVAL=10 DOWNTIME=3 DURATION=35 PROBE_URL=http://127.0.0.1/api/products/cheapest python3 resilience-lab/chaosmonkey/chaosmonkey.py results/chaos-web-dry-run`. La herramienta reconoció `web1,web2,web3` y registró **4 detenciones simuladas y 4 recuperaciones simuladas** (seleccionó web1 una vez y web3 tres veces). Resumen: **38 sondas**, **0 fallidas**, **100.0 % disponibilidad muestreada**, **0 s mayor interrupción**, **9.6 ms latencia media de sondas exitosas**. Salud profunda tras la ejecución: `{"sql":true,"mongo":true,"cache":true}`, **HTTP 200**.
+
+**Alcance:** al usar `DRY_RUN=true`, **ningún contenedor se detuvo realmente**; estos resultados sólo validan el planificador, selección de víctimas, captura de métricas y referencia saludable, **no comprueban tolerancia a fallos reales** ni completan el punto 4. Próximo paso recomendado: único fallo controlado `web1`, una sola víctima y recuperación verificada; **no inyectar fallos a Galera** dada la partición transitoria observada. Evidencias locales en `results/chaos-web-dry-run/summary.json` y `results/chaos-web-dry-run/ejecucion.txt`.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
