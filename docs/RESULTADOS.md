@@ -78,6 +78,12 @@ Se reiniciaron **solo** `app1`, `app2` y `app3`, que posteriormente aparecieron 
 
 **Resultado:** cumple el criterio de latencia de referencia `p95 < 200 ms` (**87 ms**) y no reporta fallos de ApacheBench durante los 10 minutos. No se recogió aún CPU/RAM bajo carga ni disponibilidad externa ni códigos individuales de todas las respuestas; la ruta del catálogo usa caché Redis. La respuesta máxima de 2871 ms muestra que existieron latencias atípicas. **La prueba sostenida c20/t600 queda registrada como ejecutada**, sin confundirla con ensayo de estrés, spike, soak o failover. Su archivo se mantiene local en la VM.
 
+### Estrés escalonado: nivel c25 durante 60 segundos (25-10-2026 UTC)
+
+**Ejecución real desde la VM:** `ab -k -c 25 -t 60 -n 1000000 http://127.0.0.1/api/products/cheapest`. Salida local guardada en `results/estres/estres-25.txt` según el comando propuesto; el operador compartió el resultado de ApacheBench. Duración **60.007 s**, **30 655** solicitudes completas, **0** fallidas reportadas por ApacheBench, throughput de **510.86 req/s**, tiempo medio **48.937 ms**, **p50 40 ms / p95 117 ms / p99 164 ms**, máximo **372 ms**, transferencia **736.88 KiB/s**, y **0 conexiones Keep-Alive** contabilizadas. Al terminar, `/api/health/deep` devolvió `{"sql":true,"mongo":true,"cache":true}`.
+
+**Evaluación:** nivel c25 completado sin fallos registrados por ApacheBench, cumpliendo objetivo indicativo `p95 < 200 ms`. No es una prueba hasta saturación ni valida por sí sola todos los códigos HTTP. Todavía faltan escalones de estrés (p. ej., c50 y c100, si el nivel previo es estable), CPU/RAM simultáneos, carga sin caché y otras familias del plan. Prueba local a `127.0.0.1`; no se ha medido aún el cliente externo.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
