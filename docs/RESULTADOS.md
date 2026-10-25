@@ -182,6 +182,18 @@ Se inició de nuevo `redis3` a las **02:37:15 UTC**. Una verificación temprana 
 
 La sonda original informó **91 de 92 muestras exitosas, 98.913 % de disponibilidad muestreada**, menor que el objetivo de 99 %. La elección automática, reincorporación y recuperación funcional quedan **comprobadas**; la continuidad sin interrupción no. Evidencias locales en VM: `results/failover/sonda-redis3.csv`, `results/failover/resumen-redis3.txt`. Redis se usa como caché desechable sin persistencia; no inferir durabilidad de claves.
 
+### MongoDB Replica Set: failover mongo1 → mongo2 y recuperación, con 503 final (25-10-2026 UTC)
+
+**Precondiciones verificadas:** `mongo1` PRIMARY, `mongo2` y `mongo3` SECONDARY, todos `health:1`; salud inicial de aplicación `{"sql":true,"mongo":true,"cache":true}`; lectura de `/api/products/ST-001/reviews` con HTTP 200 que contenía reseña de prueba `test-e77dd078ad844cc19496252f05ded1dd`. El operador generó un archivo de respaldo lógico mediante `mongodump --archive --gzip` en `backups/mongodb/pre-failover-20261025T024645Z.archive.gz` (tamaño observado **656 bytes**; **integridad y restaurabilidad no verificadas todavía**, no inferir copia restaurable por existir archivo).
+
+**Inyección:** `docker stop -t 10` del contenedor PRIMARY `mongo1` a las **02:46:56 UTC**. Tras aproximadamente 45 s, la lectura de `rs.status()` mostró `mongo1` no accesible, `mongo2` como nuevo PRIMARY saludable y `mongo3` SECONDARY saludable. Durante la caída, `GET /api/products/ST-001/reviews` devolvió **HTTP 200** con la reseña original preservada.
+
+**Recuperación:** `docker start` de `mongo1` a las **02:47:54 UTC**. Posteriormente los tres contenedores aparecieron `Up (healthy)`; `rs.status()` observó `mongo1` SECONDARY, `mongo2` PRIMARY, `mongo3` SECONDARY, todos `health:1`. La sonda de lectura de reseñas informó **97 muestras, 97 exitosas, disponibilidad muestreada 100%** (sólo la ruta de reseñas, no disponibilidad del sistema completo).
+
+**Incidencia sin resolver:** inmediatamente después del ensayo la comprobación `GET /api/health/deep` devolvió **HTTP 503** con cuerpo JSON `{"error":"Service temporarily unavailable"}`. Este cuerpo corresponde a un error no gestionado específicamente dentro de la API; según `application/index.js`, la ruta de salud profunda ejecuta `pool.query('SELECT 1')` y `mongo.db().command({ping:1})` en paralelo, por lo que el 503 puede deberse al acceso SQL o al ping MongoDB. Un Redis no listo, sin excepción SQL/Mongo, produciría el cuerpo diferente `{"sql":true,"mongo":true,"cache":false}`. **No atribuir el 503 a MongoDB ni proclamar salud general completa sin diagnóstico.** Investigar salud profunda por API y registros correlacionados. No ejecutar inyecciones Galera/Chaos hasta restablecer HTTP 200 y clúster estable.
+
+**Archivos de evidencia en la VM:** `results/failover/sonda-mongo1.csv`, `results/failover/resumen-mongo1.txt`, respaldo lógico indicado arriba. No se ha hecho prueba de restauración, y el respaldo no está confirmado fuera de la VM.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
