@@ -53,7 +53,7 @@
 
 **Observabilidad (TEST-PLAN 5).** Nagios registró alertas reales de caída/recuperación de `web1`, `app1` y dependencias; para un fallo web1 se documentó primera detección SOFT a **6 s**, servicio HARD a **14 s** y host HARD a **48 s**, con recuperación registrada tras la restitución. Se recuperó el mismo contenedor de Nagios desde `Exited (255)`, sin recrearlo; el estado exportado mostró **24/24 hosts UP y 30/30 servicios OK**, y la interfaz devolvió HTTP 401 por requerir autenticación. Existen **3 capturas PNG** en [la galería](evidencias/README.md). No se ha demostrado envío de alertas externas ni calculado MTTD/MTTR promedio de múltiples experimentos.
 
-**Límites del laboratorio:** infraestructura concentrada en **una sola VM Ubuntu/VirtualBox**, sin tolerancia a caída del host; resultados de carga obtenidos localmente, no desde otra máquina; Galera ha mostrado fallos transitorios WSREP aun sin inyección directa de fallos sobre sus miembros. Evidencias detalladas y archivos locales: [RESULTADOS.md](RESULTADOS.md) y [PENDIENTES-TEST-PLAN.md](PENDIENTES-TEST-PLAN.md).
+**Límites del laboratorio:** infraestructura concentrada en **una sola VM Ubuntu/VirtualBox**, sin tolerancia a caída del host; resultados de carga obtenidos localmente, no desde otra máquina; Galera ha mostrado fallos transitorios WSREP aun sin inyección directa de fallos sobre sus miembros. Evidencias detalladas y archivos locales: [RESULTADOS.md](RESULTADOS.md) y [TEST-PLAN.md](TEST-PLAN.md).
 
 ## 3. Pendientes reales y condiciones de entrega
 

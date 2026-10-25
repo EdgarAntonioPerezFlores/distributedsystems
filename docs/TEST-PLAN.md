@@ -155,15 +155,15 @@ La salida de un nuevo análisis del CSV local informa **90 filas: 89 correctas, 
 
 Confirmado en el CSV local: 90 filas leídas; **89 válidas (`ok=True`)**, ninguna con `ok=False`, y **una fila final vacía (número de línea 91)**. Las trazas prueban distribución entre las tres API: `app1` 32, `app2` 44, `app3` 13. No es evidencia de caída/reinicio de `app1`, pues aún no se encontró su registro de inyección. Próximo paso seguro: inspeccionar/limpiar exclusivamente caché APT y capturar `docker stats` basal antes de pruebas de carga o caos; disco 95 % y 1.3 GB libres.
 
-## D. Checklist de publicación final
+## D. Estado de publicación de evidencias
 
-- [x] Código/IaC, arquitectura JPG y documentación base en `main`.
-- [x] Capturas Nagios inicial, host DOWN y recuperación.
-- [ ] Logs de rendimiento y recursos (local y, de ser posible, desde Windows).
-- [ ] Evidencias de failover por componente y verificación posterior.
-- [ ] Ejecución y resultados de Chaos Monkey; escenarios no ejecutados declarados.
-- [x] Cronología Nagios y latencias de detección y recuperación **de un ensayo web1** correlacionadas con `fault.sh` (ver `RESULTADOS.md`).
-- [ ] Publicar registros Nagios/fallo originales **saneados**; si se requieren medias MTTD/MTTR, repetir observaciones controladas y calcular promedios.
-- [ ] Datos académicos de equipo, materia y fecha, si son requeridos por la portada.
+- [x] Código/IaC, arquitectura JPG y documentación base publicados en `main`.
+- [x] Tres capturas de Nagios publicadas: estado inicial, host DOWN y recuperación.
+- [x] Resultados de rendimiento, failover y Chaos Monkey descritos en [RESULTADOS.md](RESULTADOS.md) y [ENTREGA.md](ENTREGA.md), distinguiendo resultados satisfactorios, interrupciones y escenarios no ejecutados.
+- [x] Cronología de un ensayo de `web1` documentada con tiempos de detección y recuperación correlacionados con `fault.sh`.
+- [x] Integrantes, universidad, licenciatura y asignatura incluidos en README y [ENTREGA.md](ENTREGA.md).
+- [ ] Publicar una selección revisada de logs/CSV originales de rendimiento, recursos, failover, Chaos Monkey y Nagios que todavía se conservan en la VM; excluir contraseñas y secretos.
 
-Véase [RESULTADOS.md](RESULTADOS.md) para datos observados y [ENTREGA.md](ENTREGA.md) para estructura de la entrega.
+**Alcance de esta lista:** comprueba publicación documental, no aprobación de todas las pruebas. Los resultados resumidos no sustituyen los registros originales. La carga remota por LAN, los escenarios aún no ejecutados y los promedios de detección/recuperación no se consideran completados por tener documentación publicada.
+
+Véase [RESULTADOS.md](RESULTADOS.md) para datos observados y [ENTREGA.md](ENTREGA.md) para el estado consolidado de la entrega.
