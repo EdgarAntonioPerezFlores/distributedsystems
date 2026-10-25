@@ -1,6 +1,6 @@
 # Entrega del sistema distribuido — resumen verificable
 
-**Fecha de revisión:** 24 de octubre de 2026. **Repositorio y rama:** [EdgarAntonioPerezFlores/distributedsystems · main](https://github.com/EdgarAntonioPerezFlores/distributedsystems/tree/main).
+**Fecha de revisión:** 25 de octubre de 2026 (UTC). **Repositorio y rama:** [EdgarAntonioPerezFlores/distributedsystems · main](https://github.com/EdgarAntonioPerezFlores/distributedsystems/tree/main).
 
 ## 1. Entregables solicitados por el profesor
 
@@ -28,26 +28,33 @@
 
 ## 2. Evidencia efectivamente obtenida (no simulada)
 
-- Verificación general `scripts/verify.sh` finalizó con **código 0** en las comprobaciones reportadas.
-- **Galera:** 3 nodos `Synced`, clúster `Primary`, tamaño 3, más escritura SQL en un nodo y lectura del registro desde los tres.
-- **MongoDB:** 1 PRIMARY y 2 SECONDARY saludables; prueba de escritura y lectura de reseña mediante API aprobada.
-- **Redis Sentinel:** tres Sentinel con quórum disponible; se observaron `cache miss` y `cache hit`.
-- **Keepalived:** propiedad exclusiva de cada VIP en el master, comprobada en el momento de la inspección; **no** se ha demostrado todavía la transferencia automática al backup durante una caída.
-- **Web y API:** respuestas HTTP 200, distribución observada entre `web1–3` y `app1–3`.
-- **Carga local básica:** 9,107 peticiones / 30 s / concurrencia 5 / **303.56 RPS**, sin fallos reportados por ApacheBench; **no** es una medición desde otra laptop.
-- **Caída reversible de `web1`:** parada programada de 120 s y recuperación; los tres web quedaron `Up` y `verify.sh` regresó código 0. Un ensayo anterior registró 144 respuestas exitosas en 145 muestras de sonda local.
-- **Nagios:** validación de configuración con **0 errores** y 24 advertencias de contactos de hosts; panel autenticado accesible desde Windows mediante túnel SSH. Tres capturas muestran **24 hosts UP → 23 UP / 1 DOWN → 24 UP**, con **30 servicios OK** durante las capturas. **Un registro de Nagios recibido posteriormente sí confirmó `SERVICE ALERT: web1;Website HTTP;CRITICAL;HARD` a las 22:38:56 UTC, seguido de `OK;HARD` a las 22:40:56 UTC; el estado CRITICAL no se ve en las capturas.**
+**Funcionalidad y replicación (TEST-PLAN 1).** `scripts/verify.sh` finalizó con código 0 en la validación reportada. Los tres nodos Galera mostraron `Synced / Primary / cluster_size=3 / wsrep_ready=ON`, con comprobación de escritura/lectura entre nodos; MongoDB funcionó con 1 PRIMARY y 2 SECONDARY y se comprobó persistencia de reseña; Redis Sentinel confirmó elección de master y consultas de caché. Tras un episodio WSREP, se registraron **6 rondas, 18/18 checks Galera correctos entre 04:07:06 y 04:08:05 UTC**, y salud general HTTP 200. Son observaciones puntuales, no garantía de estabilidad indefinida.
 
-Detalles, salidas y límites: [RESULTADOS.md](RESULTADOS.md) y [evidencias/README.md](evidencias/README.md).
+**Rendimiento (TEST-PLAN 2).**
+- Smoke local de 30 s y concurrencia 5: **9107 peticiones exitosas, p95 34 ms**.
+- Carga sostenida 20 conexiones/600 s: **302 663 completas, 0 fallidas según ApacheBench, 504.44 req/s, p95 87 ms**.
+- Estrés con concurrencia 25: **30 655, 510.86 req/s, p95 117 ms**; concurrencia 50: **28 854, 480.79 req/s, p95 235 ms**, excediendo objetivo de p95 < 200 ms.
+- Comparación de caché: **343.92 req/s con Redis y 288.55 req/s sin caché** (aprox. +19.2 % según estos ensayos).
+- Capacidad directa: Nginx `web1` **100 000 peticiones, 6374.08 req/s, p95 2 ms**; API `app1` sin caché **15 233, 761.64 req/s, p95 13 ms**, sin fallidas según `ab`. Son operaciones diferentes, no comparación directa de eficiencia.
+- Pico moderado preliminar **5→20→5**: **3000 + 6795 + 4557 = 14 352 peticiones**, ninguna fallida según `ab`, p95 **59/93/28 ms**, memoria sin aumentos significativos en tres instantáneas; pico CPU observado `app1` **26.25 %**. **No sustituye** spike solicitado **5→300→5** ni soak de horas.
 
-## 3. Pendientes reales, separados de los entregables básicos
+**Alta disponibilidad y failover (TEST-PLAN 3).** Se observaron cambios reales de VIP y recuperación en HAProxy de presentación y aplicación, además del proxy SQL alternativo; las sondas tuvieron, respectivamente, **50/56**, **74/88** y **66/67** respuestas exitosas, con interrupciones transitorias. Sentinel promovió `redis1` tras caída del antiguo master `redis3` (**91/92** respuestas) y MongoDB promovió `mongo2` tras detener `mongo1` (**97/97** lecturas muestreadas), conservando la reseña comprobada. **No se ejecutó parada controlada de nodos Galera** por inestabilidad espontánea previa `NON-PRIMARY` y riesgo de datos/quórum.
 
-**Para cerrar la entrega sin nuevas pruebas peligrosas:**
-1. Completar los **nombres de los integrantes**, grupo/materia y fecha de entrega, si el profesor lo solicita. No se han proporcionado aquí, por lo que no se inventan.
-2. Si exigen capturas de ejecución además de Nagios, guardar una imagen de la aplicación `http://192.168.100.29/` y otra de la salida final `docker compose ps` / `scripts/verify.sh` sin credenciales.
-3. Revisar el disco de la VM: anteriormente se reportó **95 % de uso**. No borrar volúmenes, ni usar `docker compose down -v`.
+**Chaos Engineering (TEST-PLAN 4).** Chaos Monkey en simulación `DRY_RUN` **38/38**; en fallos de contenedores reales: `web1` **42/43 (97.67 %)** y `app1` **45/45 (100 %)**, con restauración automática. El experimento de red real `app1/eth1` aplicó **`tc netem delay 200ms 50ms` durante 12 s** y eliminó la regla; sonda **32/38 (84.21 %)**, seguida inmediatamente de **HTTP 503**. En ese intervalo, **galera2 y galera3** registraron timeouts WSREP y estados `NON-PRIMARY`, aunque no se demostró que la latencia en `app1` los causara. Posteriormente, las tres API respondieron HTTP 200, Galera se comprobó sincronizado y la salud pública fue HTTP 200; el ensayo de disponibilidad bajo latencia **no aprobó** la hipótesis >=99 %.
 
-**Actualización de alcance por enunciado completo (24-10-2026):** el profesor **sí exige ejecutar los puntos 1 al 5 de [TEST-PLAN](../resilience-lab/TEST-PLAN.md)**, además de entregar diagrama, Markdown y IaC. Por tanto, **el proyecto aún no está concluido en la parte experimental**: faltan carga sostenida/estrés/spike/soak y recursos; failover real de balanceadores y nodos de datos; una ejecución del Chaos Monkey; y series repetidas para promediar MTTD/MTTR. **Ya se correlacionaron tiempos de detección y recuperación de un ensayo web1 usando Nagios y `fault.sh`.** No se darán por terminados escenarios no ejecutados. Consulta el [checklist exhaustivo de pruebas pendientes](PENDIENTES-TEST-PLAN.md) y los [procedimientos](PRUEBAS.md).
+**Observabilidad (TEST-PLAN 5).** Nagios registró alertas reales de caída/recuperación de `web1`, `app1` y dependencias; para un fallo web1 se documentó primera detección SOFT a **6 s**, servicio HARD a **14 s** y host HARD a **48 s**, con recuperación registrada tras la restitución. Se recuperó el mismo contenedor de Nagios desde `Exited (255)`, sin recrearlo; el estado exportado mostró **24/24 hosts UP y 30/30 servicios OK**, y la interfaz devolvió HTTP 401 por requerir autenticación. Existen **3 capturas PNG** en [la galería](evidencias/README.md). No se ha demostrado envío de alertas externas ni calculado MTTD/MTTR promedio de múltiples experimentos.
+
+**Límites del laboratorio:** infraestructura concentrada en **una sola VM Ubuntu/VirtualBox**, sin tolerancia a caída del host; resultados de carga obtenidos localmente, no desde otra máquina; Galera ha mostrado fallos transitorios WSREP aun sin inyección directa de fallos sobre sus miembros. Evidencias detalladas y archivos locales: [RESULTADOS.md](RESULTADOS.md) y [PENDIENTES-TEST-PLAN.md](PENDIENTES-TEST-PLAN.md).
+
+## 3. Pendientes reales y condiciones de entrega
+
+**Los puntos 1–5 de [TEST-PLAN](../resilience-lab/TEST-PLAN.md) forman parte del encargo docente**; se distingue cuidadosamente cada escenario ejecutado de los pendientes. Aún faltan principalmente: **spike 5→300→5**, **soak de varias horas**, cobertura de capacidad a nivel DB, algunos fallos compuestos/de recursos y red, **failover voluntario de Galera** (pospuesto para no arriesgar datos con inestabilidad WSREP), y promedios de MTTD/MTTR y verificación de alertas externas. Los eventos observados se documentan aunque incumplan metas de disponibilidad.
+
+**Para preparar la entrega sin inyecciones nuevas:** 
+1. Completar nombres de integrantes, materia/grupo y fecha de entrega si el profesor lo requiere. No se inventan datos personales.
+2. Adjuntar capturas recientes del sistema y de Nagios, y conservar los archivos bajo `results/` en la VM. Los reportes Markdown principales están en GitHub, pero los logs/csv locales no deben darse por subidos automáticamente.
+3. Comprobar estado final y espacio. La última lectura de `df -h /` mostró **70 GB totales, 23 GB usados, 44 GB libres (35 % de uso)**; el dato anterior de 95 % ya no representa la situación después de la ampliación.
+4. No ejecutar `docker compose down -v`, inicializadores sobre datos existentes, reinicios/bootstrap simultáneos Galera ni pruebas de partición bajo WSREP inestable.
 
 ## 4. Última comprobación segura antes de entregar
 
@@ -72,4 +79,4 @@ Un resultado sano de esos comandos permite tomar la última captura. **No ejecut
 - [Tres capturas Nagios](evidencias/README.md)
 - [Plan de pruebas (incluye pendientes)](PRUEBAS.md)
 
-**Conclusión defendible:** los componentes requeridos están implementados y la aplicación distribuida ha mostrado funcionamiento, replicación y recuperación de un web. La infraestructura y la documentación están disponibles en `main`. Se identifican con transparencia las pruebas extendidas todavía no realizadas y la limitación de ejecutar todo sobre una sola VM.
+**Conclusión defendible:** la arquitectura y replicación multicapas están implementadas; se comprobaron continuidad parcial bajo fallos, recuperación y monitoreo, con resultados cuantificados. Las pruebas detectaron indisponibilidad real y pérdida temporal de componente primario en Galera. La infraestructura y el informe están disponibles en `main`, con los escenarios restantes y las limitaciones de una sola VM claramente señalados.
