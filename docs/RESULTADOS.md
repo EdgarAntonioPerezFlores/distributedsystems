@@ -10,6 +10,12 @@ Se reiniciaron **solo** `app1`, `app2` y `app3`, que posteriormente aparecieron 
 
 **Interpretación:** la ruta web/API/SQL/caché volvió a responder después de la recuperación de Galera y Keepalived. Esto **no constituye** ensayo de alta disponibilidad con fallos simultáneos, carga sostenida ni validación de toda la plataforma bajo estrés. Falta repetir `bash scripts/verify.sh` y revisar Mongo/Redis/VIPs después de recuperación, así como continuar las pruebas pendientes en `resilience-lab/TEST-PLAN.md`. Mantener los respaldos en `backups/galera-resguardo/` y no volver a habilitar el bootstrap temporal de galera3.
 
+### Verificación integral final tras recuperación (25-10-2026 UTC)
+
+**Evidencia recibida desde la VM:** `bash scripts/verify.sh > results/cierre/verificacion-posrecuperacion.txt 2>&1` terminó con **código de salida 0**. El script verifica listado de contenedores, salud HTTP profunda, estado WSREP de `galera1`, `galera2`, `galera3`, estado del réplica set MongoDB desde `mongo1`, observaciones y quórum de los tres Sentinel, y nueve consultas al catálogo por HTTP. Las últimas líneas compartidas muestran múltiples `HTTP/1.1 200 OK` con rutas que alternan `webnode1, webnode2, webnode3` y `app1, app2, app3`; además trazan `redis -> cache hit`. Una consulta independiente a `http://localhost/api/health/deep` imprimió explícitamente `{"sql":true,"mongo":true,"cache":true}`.
+
+**Conclusión:** recuperación funcional integral confirmada tras reinicio del host, recuperación de Galera con bootstrap temporal retirado, recreación de monitores y Keepalived, y reinicio de los procesos API. No prueba continuidad durante la caída ni certifica aún carga prolongada o todos los failovers del plan. **Evidencia local:** `results/cierre/verificacion-posrecuperacion.txt` (no subida al repositorio; revisar secretos antes de publicar). Se conserva histórico del failover anterior app1 64/80 muestras exitosas y los ensayos aún pendientes.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
