@@ -109,6 +109,22 @@ Se reiniciaron **solo** `app1`, `app2` y `app3`, que posteriormente aparecieron 
 
 **Limitaciones:** los dos ensayos se ejecutaron secuencialmente, una sola corrida por opción, desde la misma VM; la salida de ab indica cero peticiones fallidas pero no permite auditar individualmente todos los códigos de respuesta. El escenario `?nocache=1` evita el uso de la caché del catálogo sin detener el servicio Redis, por lo que las conclusiones se refieren a esta ruta y condiciones, no a una caída real de Redis. No se midieron CPU/RAM ni variabilidad entre repeticiones.
 
+### Comparación de rendimiento con caché Redis vs nocache (25-10-2026 UTC)
+
+**Ejecución real:** ApacheBench contra catálogo en `127.0.0.1`, 5 conexiones concurrentes, 30 s por escenario. **Con caché**: `ab -c 5 -t 30 -n 1000000 http://127.0.0.1/api/products/cheapest`; **sin caché de esta ruta**: `ab -c 5 -t 30 -n 1000000 'http://127.0.0.1/api/products/cheapest?nocache=1'`. Redis permaneció operativo durante ambos ensayos; `nocache=1` omite lectura/escritura de caché en la ruta del catálogo y hace consulta a SQL. Evidencias locales `results/cache/con-cache.txt` y `results/cache/sin-cache.txt`.
+
+| Métrica | Con caché | Sin caché |
+|---|---:|---:|
+| Duración real | 30.004 s | 30.008 s |
+| Solicitudes completas | **10 319** | **8 659** |
+| Solicitudes fallidas de ApacheBench | **0** | **0** |
+| Throughput | **343.92 req/s** | **288.55 req/s** |
+| Tiempo medio de solicitud | **14.538 ms** | **17.328 ms** |
+| p50 / p95 / p99 | **13 / 27 / 40 ms** | **15 / 31 / 47 ms** |
+| Máximo | 151 ms | 130 ms |
+
+**Efecto observado:** incremento de throughput **~19.2 %** al usar caché, calculado respecto del escenario sin caché; reducción del tiempo medio de respuesta **~16.1 %**. Comparación secuencial de una sola ejecución por escenario, desde la VM, sin estadísticas CPU/RAM simultáneas ni verificación individual por petición de códigos HTTP; no supone mejora generalizable a toda carga. La comprobación posterior `/api/health/deep` devolvió `{"sql":true,"mongo":true,"cache":true}`.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
