@@ -362,6 +362,20 @@ Las **tres API** respondieron directamente `/health=HTTP 200` (SQL `ready`, cach
 
 **Resultado y alcance:** se confirma **recuperación observada** después del fallo, y limpieza efectiva de netem de `app1/eth1`; **no** se cumplió la hipótesis de disponibilidad durante la perturbación ni fue inmediato el restablecimiento en la muestra final del experimento. No se puede atribuir inequívocamente el HTTP 503 a `app1`, Galera, balanceador o SQL sin correlacionar logs del intervalo **2026-10-25T03:55:15Z** y minutos siguientes. Este diagnóstico es una instantánea posterior, **no demuestra estabilidad indefinida**. El experimento sigue clasificado como fallo de disponibilidad con recuperación posterior documentada.
 
+### Correlación WSREP durante netem app1: pérdida temporal NON-PRIMARY en Galera2/3 (25-10-2026 03:55 UTC)
+
+**Registros aportados por el operador** a partir de `results/red-app1/diagnostico-503.log`, recuperados con `docker compose logs --since 2026-10-25T03:55:00Z --until 2026-10-25T03:58:00Z` sobre las capas LB, API, proxy SQL y Galera. La regla `tc netem delay 200ms 50ms` se instaló **a las 03:55:15Z** sobre `app1/eth1`, **no** sobre redes o contenedores Galera. Se registraron:
+
+- **03:55:24Z:** `galera2` y `galera3` informaron `connection to peer ... timed out, no messages seen in PT3S` y `last inactive check ... skipping check`.
+- **03:55:25Z:** `galera3` reconectó a sus pares; `galera2` recuperó conexión al menos con `galera3`.
+- **03:55:42–43Z:** nuevos `timed out` y `last inactive check`; `galera2` y `galera3` empezaron a marcar a sus pares como sospechosos e inactivos.
+- **03:55:44–46Z:** **ambos** nodos emitieron `Received NON-PRIMARY`, `Non-primary view`, `State: NON-PRIMARY`; a las **03:55:46Z** registraron `Server ... synced with group`. **`synced with group` no demuestra por sí solo exactamente en qué segundo ambos recuperaron `Primary`**.
+- **03:57:31Z:** `galera2` y `galera3` volvieron a registrar `connection to peer ... timed out` con otro aviso de comprobación de inactividad atrasada.
+
+**Interpretación acotada:** estas son evidencias directas de **pérdida temporal de comunicación y vistas NON-PRIMARY en Galera2 y Galera3**, coincidentes en el tiempo con el experimento de red y con el resultado general de **32/38 sondas correctas (84.21 %) y 503 final**. Puesto que las API ejecutan SQL en `/health`, el fallo SQL **podría** propagar un `503` y hacer que HAProxy declare indisponibles backends API. **No hay todavía una correlación completa** de las 6 muestras fallidas (CSV `utc,status,ms,ok,trace,error`) con errores de aplicación y cambios backend de HAProxy. El filtrado de logs expuesto sólo incluyó líneas de Galera; la ausencia de líneas coincidentes de HAProxy/API no demuestra que no haya habido fallos allí. Galera tuvo `non-Primary` transitorios **antes** de netem en experimentos separados, por lo que **no se ha demostrado causalidad exclusiva del retardo aplicado a `app1` sobre la falla de comunicación entre nodos Galera**.
+
+**Verificación posterior independiente:** los tres Galera reportaron `Synced/Primary/size=3/wsrep_ready=ON`; las tres API devolvieron `/health` y `/health/deep` 200; el balanceo final devolvió **tres HTTP 200**; `app1/eth1` quedó con `qdisc noqueue`. **Prueba de latencia ejecutada y con incumplimiento de disponibilidad, pero recuperación posterior comprobada.** Mantener suspendidas nuevas inyecciones y pruebas de 300 usuarios hasta determinar origen de desconexiones WSREP en esta VM.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
