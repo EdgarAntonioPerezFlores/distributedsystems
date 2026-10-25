@@ -133,6 +133,23 @@ Se reiniciaron **solo** `app1`, `app2` y `app3`, que posteriormente aparecieron 
 
 **Evidencias locales (no enviadas todavía a GitHub):** `results/failover/sonda-presentation-master.csv`, `results/failover/resumen-presentation-master.txt`. El ensayo no involucró parada ni recreación de Galera, MongoDB o Redis. No se ha ejecutado todavía el failover del HAProxy de aplicación.
 
+### Análisis posterior del failover de presentación: seis errores y retorno de VIP al maestro
+
+El operador comprobó posteriormente por `docker compose ps -a` que `presentation-lb-master`, `presentation-lb-backup` y sus dos Keepalived estaban **Up**. La IP virtual **`172.30.0.250/24` estaba de nuevo únicamente en `presentation-keepalived-master`**, no en el backup. Se confirmó por tanto el retorno de VIP al maestro (*failback*) y ausencia de duplicación en el instante observado.
+
+Se analizaron **56 muestras** del archivo local `results/failover/sonda-presentation-master.csv`: **50 exitosas, 6 fallidas**. Las seis filas fallidas son:
+
+| Marca UTC (25-10-2026) | HTTP | Duración | Error |
+|---|---:|---:|---|
+| 01:57:09.483682 | 0 | 3102.32 ms | TimeoutError |
+| 01:57:12.586548 | 0 | 3005.71 ms | TimeoutError |
+| 01:57:15.599808 | 0 | 3009.29 ms | TimeoutError |
+| 01:58:08.068994 | 502 | 230.84 ms | Bad Gateway |
+| 01:58:09.069103 | 503 | 568.23 ms | Service Unavailable |
+| 01:58:10.070759 | 503 | 8.33 ms | Service Unavailable |
+
+**Interpretación prudente:** el primer grupo de tres `TimeoutError` es compatible con la transición al backup y el segundo (HTTP 502/503) con una alteración posterior o la vuelta al maestro, pero las marcas de la sonda no prueban por sí mismas cuál es la causa específica. Requiere correlación con logs VRRP/HAProxy y marcas de `pause`/`unpause` para atribuir cada error. El cambio físico de red del usuario posterior al ensayo puede alterar la **IP LAN externa**, pero la sonda utilizó `127.0.0.1`, de modo que no debe asumirse que explica esos errores. Sigue siendo **89.29 % de disponibilidad muestreada**, no aprobada respecto de la hipótesis de 99 %.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
