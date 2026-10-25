@@ -1,5 +1,14 @@
 # Entrega del sistema distribuido — resumen verificable
 
+**Universidad:** Universidad del Caribe  
+**Licenciatura:** Ingeniería en Datos e Inteligencia Organizacional  
+**Asignatura:** Sistemas distribuidos
+
+**Integrantes:**
+
+- Edgar Antonio Perez Flores
+- Ana Daniela Fernandes Altamirano
+
 **Fecha de revisión:** 25 de octubre de 2026 (UTC). **Repositorio y rama:** [EdgarAntonioPerezFlores/distributedsystems · main](https://github.com/EdgarAntonioPerezFlores/distributedsystems/tree/main).
 
 ## 1. Entregables solicitados por el profesor
@@ -51,7 +60,7 @@
 **Los puntos 1–5 de [TEST-PLAN](../resilience-lab/TEST-PLAN.md) forman parte del encargo docente**; se distingue cuidadosamente cada escenario ejecutado de los pendientes. Aún faltan principalmente: **spike 5→300→5**, **soak de varias horas**, cobertura de capacidad a nivel DB, algunos fallos compuestos/de recursos y red, **failover voluntario de Galera** (pospuesto para no arriesgar datos con inestabilidad WSREP), y promedios de MTTD/MTTR y verificación de alertas externas. Los eventos observados se documentan aunque incumplan metas de disponibilidad.
 
 **Para preparar la entrega sin inyecciones nuevas:** 
-1. Completar nombres de integrantes, materia/grupo y fecha de entrega si el profesor lo requiere. No se inventan datos personales.
+1. Los nombres de integrantes, universidad, licenciatura y asignatura están registrados al inicio. Completar grupo y fecha de entrega si el profesor lo requiere.
 2. Adjuntar capturas recientes del sistema y de Nagios, y conservar los archivos bajo `results/` en la VM. Los reportes Markdown principales están en GitHub, pero los logs/csv locales no deben darse por subidos automáticamente.
 3. Comprobar estado final y espacio. La última lectura de `df -h /` mostró **70 GB totales, 23 GB usados, 44 GB libres (35 % de uso)**; el dato anterior de 95 % ya no representa la situación después de la ampliación.
 4. No ejecutar `docker compose down -v`, inicializadores sobre datos existentes, reinicios/bootstrap simultáneos Galera ni pruebas de partición bajo WSREP inestable.
