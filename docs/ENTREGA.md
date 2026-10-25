@@ -56,6 +56,10 @@
 3. Comprobar estado final y espacio. La última lectura de `df -h /` mostró **70 GB totales, 23 GB usados, 44 GB libres (35 % de uso)**; el dato anterior de 95 % ya no representa la situación después de la ampliación.
 4. No ejecutar `docker compose down -v`, inicializadores sobre datos existentes, reinicios/bootstrap simultáneos Galera ni pruebas de partición bajo WSREP inestable.
 
+### Estado de cierre comprobado en Ubuntu (25-10-2026 UTC)
+
+`git pull --ff-only origin main` completó el avance hasta **`61cb0cb`**; contenedores de aplicación, balanceo, Galera, MongoDB, Redis, Sentinel y Nagios aparecieron **Up**, las bases de datos `healthy` donde tienen healthchecks, **Nagios Up 40 minutos**, `GET /api/health/deep` **HTTP 200** (`sql/mongo/cache=true`) y disco raíz **35 % usado, 44 GB libres**. La infraestructura está funcionando en esta observación. La cobertura de todos los escenarios experimentales sigue parcialmente pendiente, como se indica arriba; evitar afirmar que una lectura sana resuelve las desconexiones WSREP históricas.
+
 ## 4. Última comprobación segura antes de entregar
 
 Ejecutar **solo si se necesita evidencia final** desde Ubuntu, sin reiniciar servicios:
