@@ -37,6 +37,26 @@ Se reiniciaron **solo** `app1`, `app2` y `app3`, que posteriormente aparecieron 
 
 **Interpretación:** prueba corta terminada sin peticiones fallidas según ApacheBench. p95 de 116 ms queda por debajo del objetivo de referencia de 200 ms indicado en `resilience-lab/TEST-PLAN.md`. Se midió la ruta HTTP local completa con **caché Redis activada**; no implica igual rendimiento desde un equipo externo, durante diez minutos, con caché desactivada o bajo fallos. Aunque se pidió `-k`, ApacheBench contabilizó cero conexiones reutilizadas. **Siguientes pruebas pendientes:** carga 20/600 s, estrés, spike, soak, comparación con/sin caché y recursos CPU/RAM bajo carga. Sin evidencia de tasas de error de estas pruebas pendientes.
 
+### Intento de carga sostenida c20/600s: terminó en el límite de 50 000 solicitudes (25-10-2026 UTC)
+
+**Ejecución recibida desde la VM:** `ab -k -c 20 -t 600 http://127.0.0.1/api/products/cheapest`; evidencia local `results/carga/carga-20usuarios-600s.txt`. **El ensayo NO duró 600 s**: ApacheBench terminó automáticamente tras **50 000 solicitudes** en **99.605 segundos** (aprox. 1 min 40 s), porque al especificar `-t` sin un `-n` explícito establece un límite interno de **50 000** peticiones. Este ensayo se registra como prueba corta, no como carga sostenida de 10 minutos.
+
+| Métrica | Observado |
+|---|---:|
+| Concurrencia | 20 |
+| Solicitudes completas / fallidas reportadas | **50 000 / 0** |
+| Duración real | **99.605 s** (no 600 s) |
+| Solicitudes por segundo | **501.98** |
+| Tiempo medio por solicitud | **39.842 ms** |
+| p50 / p95 / p99 | **32 / 90 / 142 ms** |
+| Latencia máxima | **597 ms** |
+| `Keep-Alive requests` | **0** incluso con `-k` |
+| `Non-2xx responses` | No indicado en la salida; no hubo verificación individual de códigos HTTP |
+| Salud de SQL/Mongo/Redis después | `{"sql":true,"mongo":true,"cache":true}` |
+| Disco después | 70 GB total, 23 GB usados, 45 GB libres (34 %) |
+
+**Interpretación:** cero fallos informados por ApacheBench y p95 inferior al objetivo de 200 ms, pero **no** certifica la prueba sostenida de 10 minutos. El endpoint usa Redis y la prueba se ejecutó desde el mismo host, sin estadísticas CPU/RAM durante la carga. Para cubrir la duración correcta, ejecutar `ab -k -c 20 -n 1000000 -t 600 http://127.0.0.1/api/products/cheapest` y verificar que `Time taken for tests` sea cercano a 600 segundos; registrar los resultados por separado. La ejecución previa quedó guardada y no debe sobrescribirse.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
@@ -386,6 +406,7 @@ Ejecutada en el servidor VM con `bash tests/load.sh "http://192.168.1.88" 5 30` 
 | Smoke local | 5 / 30 s | 303.56 | 14 / 34 / 55 | 9107 completas / 0 fallidas por ab / no-2xx no informado | Pendiente | `results/ab-20261024T153524Z-c5/` (VM) | Medido |
 | Funcional remoto | Equipo externo | — | — | — | — | Pendiente | No ejecutado / no aportado |
 | Carga corta c20/t60 | 20 / 60 s | 411.39 | 39 / 116 / 167 | 24692 completas / 0 fallidas por ab / no-2xx no verificado por solicitud | Pendiente | `results/carga/carga-20usuarios-60s.txt` (VM) | Medido | 
+| Ensayo c20 con objetivo 600 s, interrumpido por límite de ab | 20 / **99.605 s** (50 000 req) | **501.98** | **32 / 90 / 142** | 50 000 completas / 0 fallidas por ab / no-2xx no verificado individualmente | Pendiente | `results/carga/carga-20usuarios-600s.txt` (VM) | Medido, **no 10 min** |
 | Carga | 20 / 600 s | — | — | — | — | Pendiente | No ejecutado |
 | Estrés | 10, 25, 50, 100 / 60 s cada nivel | — | — | — | — | Pendiente | No ejecutado |
 | Spike | 5 → nivel acordado → 5 | — | — | — | — | Pendiente | No ejecutado |
