@@ -323,6 +323,23 @@ Total **14 352 peticiones completas**, **0 fallidas según ab**, con p95 menor d
 
 **Evidencias en VM:** `results/spike/fase1.txt`, `fase2.txt`, `fase3.txt`, más `results/spike/recursos-fase1.txt`, `recursos-fase2.txt`, `recursos-fase3.txt`. **Las métricas de CPU/RAM no se han aportado todavía**, aunque el script generó las capturas. El spike obligatorio **5→300→5** no se ejecutó y permanece pendiente; no recomendarlo a ciegas mientras Galera presente fallos temporales de comunicación. Este ensayo es evidencia parcial del apartado de rendimiento.
 
+### Análisis de recursos y códigos HTTP del spike 5→20→5 (25-10-2026 UTC)
+
+El operador inspeccionó las capturas realizadas por `docker stats --no-stream` durante cada fase de pico del catálogo cacheado y revisó los informes ApacheBench completos con `grep`. Tabla de **CPU % por contenedor** en la captura de cada fase (instantáneas, no medias ni máximos de 15 s):
+
+| Servicio | 5 usuarios inicial | 20 usuarios | 5 usuarios final |
+|---|---:|---:|---:|
+| `web1` | 3.43% | 11.81% | 9.64% |
+| `app1` | 7.56% | 26.25% | 18.30% |
+| `galera1` | 3.99% | 0.18% | 0.80% |
+| `galera2` | 3.03% | 0.69% | 0.61% |
+| `galera3` | 0.23% | 0.58% | 1.05% |
+| `redis1` | 2.48% | 6.35% | 6.00% |
+
+Memoria `web1`: **5.156 → 5.621 → 6.125 MiB**; `app1`: **61.55 → 61.88 → 61.75 MiB**; `galera1`: **256.9 → 252.5 → 252.5 MiB**; `galera2`: **188.9 → 185.0 → 185.0 MiB**; `galera3`: **129.7 → 129.7 → 129.7 MiB**; `redis1`: **4.84 → 4.871 → 5.141 MiB**. CPU es la fracción informada por Docker (puede superar el 100% en máquinas multicore) y la columna `MEM USAGE/LIMIT` refleja memoria en uso frente a un límite, **no memoria reservada**. En la fase de 20 usuarios se observó más CPU en la app y Redis, mientras Galera ocupó poco CPU: coherente con caché funcionando, pero **no prueba por sí mismo porcentaje de aciertos Redis ni explica causalmente los cambios de rendimiento**.
+
+Verificación de ApacheBench en los archivos de cada fase: **`Complete requests: 3000/6795/4557`**, **`Failed requests: 0`** y **199.74/452.79/303.74 req/s**. El comando `grep` buscó `Non-2xx responses:` y **no imprimió esa línea** en ninguno de los tres informes; en ApacheBench, en general se muestra la línea cuando ocurre una respuesta no-2xx. Salud actual final: `{"sql":true,"mongo":true,"cache":true}`, **HTTP 200**. No se puede concluir ausencia de fugas en prueba de horas usando sólo tres muestras puntuales. El spike de **5→300→5** y soak siguen pendientes.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
