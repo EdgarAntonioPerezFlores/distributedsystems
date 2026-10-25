@@ -232,6 +232,12 @@ Se ejecutó `DRY_RUN=true GROUP=web ACTION=stop MAX_CONCURRENT=1 INTERVAL=10 DOW
 
 **Alcance:** al usar `DRY_RUN=true`, **ningún contenedor se detuvo realmente**; estos resultados sólo validan el planificador, selección de víctimas, captura de métricas y referencia saludable, **no comprueban tolerancia a fallos reales** ni completan el punto 4. Próximo paso recomendado: único fallo controlado `web1`, una sola víctima y recuperación verificada; **no inyectar fallos a Galera** dada la partición transitoria observada. Evidencias locales en `results/chaos-web-dry-run/summary.json` y `results/chaos-web-dry-run/ejecucion.txt`.
 
+### Chaos Monkey real web1: preflight abortado por salud HTTP 503 (25-10-2026)
+
+El operador intentó iniciar el experimento real de Chaos Monkey sobre un único servidor web (`web1`). El script comprobó `web1`, `web2` y `web3` como **ACTIVO**, y `GET /` respondió **HTTP 200**. Sin embargo, durante el **preflight**, `curl -fsS http://127.0.0.1/api/health/deep` devolvió **HTTP 503** (`curl: (22)`). Debido a `set -euo pipefail`, el script se abortó **antes de iniciar Chaos Monkey**, sin detener `web1` ni inyectar fallo alguno. Por lo tanto, **no hay resultados de ensayo real de Chaos Monkey**; el dry-run de 38/38 sondas previo permanece como la única prueba Chaos Monkey reportada.
+
+**Pendiente:** identificar el motivo del HTTP 503 con cuerpo de respuesta sin `-f`, comprobaciones `/health` y `/health/deep` por cada API, registros de aplicación y revisión de WSREP de Galera. No repetir inyección hasta obtener una línea base saludable y estable.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
