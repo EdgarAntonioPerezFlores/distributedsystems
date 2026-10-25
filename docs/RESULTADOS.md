@@ -84,6 +84,14 @@ El operador inició **solo** el contenedor existente `galera1` con `docker start
 
 **PENDIENTE CRÍTICO:** `galera3` se recuperó con Compose override temporal en `results/cierre/galera3-bootstrap.yml` (`MARIADB_GALERA_CLUSTER_BOOTSTRAP=yes`, `MARIADB_GALERA_FORCE_SAFETOBOOTSTRAP=yes`, `MARIADB_GALERA_CLUSTER_ADDRESS=gcomm://`). Hay que recrear **solo galera3** usando `docker-compose.yml` normal **sin override ni bootstrap**, tras confirmar que galera1 y galera2 siguen Synced/Primary; después volver a crear el sidecar `galera-check3` que comparte espacio de red con galera3 y volver a comprobar `wsrep_cluster_size=3`. No reiniciar host ni arrancar failover hasta resolverlo. Keepalived sigue con repetidos `daemon is already running` y necesita reparación por separado.
 
+### Galera3 restaurado sin bootstrap temporal: 3 nodos saludables (25-10-2026)
+
+**Resultado recibido desde la VM:** el operador verificó por `docker inspect` que `galera3` continuaba usando las variables temporales de recuperación. Detuvo `galera-check3` y recreó **solo `galera3`** con `docker compose up -d --no-deps --no-build --force-recreate galera3`, sin borrar su volumen. La consulta posterior de variables filtradas confirmó que el contenedor recreado utiliza **`MARIADB_GALERA_CLUSTER_ADDRESS=gcomm://galera1,galera2,galera3` y `MARIADB_GALERA_CLUSTER_BOOTSTRAP=no`**, sin `MARIADB_GALERA_FORCE_SAFETOBOOTSTRAP`.
+
+Después de 40 s, `docker compose ps -a galera1 galera2 galera3` mostró **los tres `Up (healthy)`**, y el estado SQL consultado dentro de `galera3` fue `wsrep_local_state_comment=Synced`, `wsrep_cluster_size=3`, `wsrep_cluster_status=Primary`, `wsrep_ready=ON`. **La recuperación Galera con configuración normal ya quedó confirmada.** El sidecar `galera-check3` permanece detenido en el último estado explícitamente compartido y aún debe recrearse/reiniciarse. Keepalived estaba en `Restarting` con mensajes `daemon is already running`; requiere atención antes de declarar operativo el acceso HTTP. No ejecutar fallos/Chaos hasta verificar salud profunda tras reparar entrada.
+
+**Precaución:** la salida de un `docker inspect` anterior incluyó una credencial interna del servicio de copia MariaDB. No copiar ese secreto al repositorio ni a las evidencias publicadas; planificar una rotación coordinada solo cuando el clúster esté estable, no modificando unilateralmente `.env`.
+
 ## Equipo y entorno
 
 - Servidor: Ubuntu en una VM de VirtualBox; Docker Compose, proyecto `distributed-ha-lab`.
