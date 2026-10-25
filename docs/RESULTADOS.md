@@ -389,6 +389,12 @@ El operador recopiló `docker compose logs --since 2026-10-25T03:55:00Z --until 
 
 **Interpretación:** pérdida de estado `Primary` en Galera puede inutilizar temporalmente la salud de las API basada en SQL y desencadenar ausencia de backends sanos en HAProxy. Es un **mecanismo probable**, no una causalidad única demostrada: el netem se aplicó sólo en `app1`, no en las interfaces de los nodos Galera; existían incidentes WSREP similares **antes** de esta inyección. La selección de líneas mediante `grep` no revela aún eventos exactos de HAProxy o las API, y la coincidencia temporal por sí sola no determina la causa raíz. Conservar los archivos `results/red-app1/diagnostico-503.log` y `sonda-corregida.csv` para correlación, y **no seguir inyectando fallos ni ejecutar spike 300 hasta estudiar estabilidad WSREP**.
 
+### Observación de Galera tras episodio WSREP: 18/18 checks correctos en 59 s (25-10-2026)
+
+**Comprobación no invasiva del operador:** observación repetida de 6 rondas desde **2026-10-25 04:07:06 UTC** hasta **04:08:05 UTC** (59 segundos entre primera y última hora registrada, separados por aproximadamente 12 s). En cada ronda se consultó `SHOW GLOBAL STATUS` en **galera1, galera2 y galera3**. Los **18 de 18 conjuntos** mostraron `wsrep_local_state_comment=Synced`, `wsrep_cluster_size=3`, `wsrep_cluster_status=Primary` y `wsrep_ready=ON`. `GET /api/health/deep` al final respondió **HTTP 200** con `{"sql":true,"mongo":true,"cache":true}`.
+
+**Interpretación:** recuperación operativa de los tres miembros Galera y funcionamiento durante esta ventana muestreada, tras episodios de pérdida WSREP `NON-PRIMARY` alrededor de 03:55:44 UTC durante el experimento de latencia `app1`. **No** equivale a prueba de estabilidad continua de 59 s (podrían ocurrir caídas breves entre sondeos), ni confirma causa raíz o reparación definitiva. **No ejecutar nuevos fallos Galera ni spike 300 hasta revisar intermitencia.** Evidencia local: `results/galera-estabilidad/observacion.txt`.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
