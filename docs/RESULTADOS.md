@@ -29,6 +29,18 @@ Se generó `results/cierre/recursos-baseline.txt` mediante `docker stats --no-st
 
 **Decisión operativa:** conservar Galera, MongoDB y Redis intactos. Priorizar ensayo reversible y corto sobre `app1` con sonda y verificación posterior, sin reconstrucción de imágenes ni presión elevada sobre disco; posponer cargas sostenidas, fallos de clústeres de datos y Chaos Monkey hasta ampliar el margen de espacio.
 
+### Diagnóstico tras ampliar VDI: Galera NON-PRIMARY sin candidato de bootstrap (25-10-2026 UTC)
+
+Después de ampliar disco a **70 GB totales, 46 GB libres (33 % usado)** y reiniciar Ubuntu, `docker compose ps` mostró **galera1/2/3 unhealthy**, los **cuatro Keepalived en Restarting** y `curl http://localhost/api/health/deep` devolvió `curl: (52) Empty reply from server`. MongoDB/Redis figuraban saludables y web/API/LB seguían `Up` en ese momento.
+
+Los logs Galera mostraron `WSREP: Received NON-PRIMARY` en los tres nodos. El operador consultó `/bitnami/mariadb/data/grastate.dat` y `gvwstate.dat` de cada uno:
+- **galera1, galera2 y galera3:** `uuid: 00000000-0000-0000-0000-000000000000`, `seqno: -1`, `safe_to_bootstrap: 0`. El filtro `ps -ef | grep '[m]ariadbd'` no devolvió procesos.
+- **galera1 y galera2:** `gvwstate.dat` con `view_id` 200 y dos miembros listados.
+- **galera3:** `gvwstate.dat` con `view_id` 199 y tres miembros listados.
+- Keepalived repetía `daemon is already running`.
+
+**No hay evidencia todavía de corrupción ni pérdida de los datos almacenados; tampoco un candidato seguro para bootstrap.** Una recuperación requiere parar de forma controlada los servicios Galera si siguen activos, preservar los tres volúmenes, ejecutar `mariadbd --wsrep-recover` en forma **offline** en cada copia/nodo original ya detenido y comparar posiciones recuperadas antes de escoger un único candidato. No se debe suponer que `galera1` es el más avanzado ni modificar `safe_to_bootstrap` a ciegas. Prohibido `down -v` o `first-start.sh` con los volúmenes existentes. Para el orden de recuperación ver [OPERACION.md](OPERACION.md).
+
 ## Equipo y entorno
 
 - Servidor: Ubuntu en una VM de VirtualBox; Docker Compose, proyecto `distributed-ha-lab`.
