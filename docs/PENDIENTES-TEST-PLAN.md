@@ -2,6 +2,18 @@
 
 **Revisión:** 24 de octubre de 2026. **Fuente del alcance:** enunciado docente proporcionado por el equipo: *mejorar MongoDB 2.1, Redis 2.2/2.3 y todo Galera ToDo 3*; **ejecutar los puntos 1–5 de `resilience-lab/TEST-PLAN.md`**. Estos cinco puntos son **parte del encargo**, no opcionales. La presencia de scripts no equivale a haberlos ejecutado.
 
+## Estado actualizado al 25 de octubre de 2026: recuperación y carga sostenida
+
+**Actualización posterior a las observaciones históricas del 24-10-2026.** Tras expandir la partición raíz de Ubuntu a **70 GB (45 GB disponibles, 34% ocupado)** y recuperar tres miembros Galera, sus monitores, Keepalived y API, el operador ejecutó `bash scripts/verify.sh` con **código 0**. `/api/health/deep` respondió `{"sql":true,"mongo":true,"cache":true}`. El archivo de verificación está en `results/cierre/verificacion-posrecuperacion.txt` (VM).
+
+**Punto 2 — carga sostenida: completada localmente.** Se ejecutó ApacheBench en la VM sobre `http://127.0.0.1/api/products/cheapest`, **20 conexiones**, **600.002 segundos**, **302 663 solicitudes completadas**, **0 fallidas informadas por ab**, **504.44 req/s**, **p50=33 ms, p95=87 ms y p99=134 ms**, máximo **2871 ms**. Evidencia: `results/carga/carga-real-20usuarios-600s.txt`, todavía en VM. No hubo desglose independiente de todos los códigos HTTP, ni CPU/RAM simultánea. Se usó la ruta cacheada con Redis; no equivale a prueba remota desde Windows.
+
+**Punto 3 — failover app1: ejecutado, no aprobado sin reservas.** La sonda de un ensayo anterior capturó 64 de 80 muestras exitosas (80%), con 16 errores; la API recuperó salud después. Faltan análisis de los 16 errores y otros failovers.
+
+**Aún pendientes de los puntos 1-5:** estrés escalonado, spike, soak de horas, comparación de caché / sin caché, capacidad por capa y recursos en carga; validación funcional desde un cliente externo; failover LB/SQL/Redis/Mongo/Galera con evidencias; Chaos Monkey y fallos de red/recursos que puedan ensayarse sin poner en riesgo datos; publicación de logs sin secretos y análisis consolidado Nagios de múltiples fallos. Los planes de varias horas o con particiones de datos deben ejecutarse únicamente en condiciones controladas, no declararse hechos por existir scripts.
+
+**Siguiente ensayo sugerido (bajo riesgo):** estrés en aplicación cacheada comenzando por 25 conexiones durante 60 s, verificar salud tras cada nivel; aumentar después a 50 y 100 **solo si el nivel anterior es estable**, guardar salidas diferenciadas y observar recursos. El resultado de la carga sostenida ya fue registrado en `docs/RESULTADOS.md`; no repetirla.
+
 ## A. Infraestructura y archivos de entrega — listos
 
 - [x] HAProxy master/backup + Keepalived de presentación, VIP interna (archivo de configuración y verificación de propietario único).
@@ -21,10 +33,11 @@
 | Punto | Ensayo / resultado | Situación |
 |---|---|---|
 | **1. Baseline** | Salud profunda API 200, tres Galera Primary/Synced, Mongo PRIMARY/SECONDARY, Sentinel CKQUORUM, rutas web/API, SQL replicación, Mongo reseñas, cache miss/hit, VIP único por capa | **Hecho en VM**; falta consolidar logs/capturas sin secretos |
-| **2. Rendimiento** | Smoke local ApacheBench: 9,107 solicitudes, 0 fallos reportados, 303.56 req/s, 30 s, concurrencia 5 | **Solo smoke**, no sustituye carga externa |
-| **2. Rendimiento** | Load 10 min, stress de concurrencia, spike, soak horas, cached vs nocache, capacidad por capa, RAM/CPU y tiempos p50/p95/p99 | **Sin resultados reportados** |
+| **2. Rendimiento** | Smoke c5/30s (9,107 peticiones), carga corta c20/60s (24,692) y sostenida local c20/600.002s (**302,663 peticiones, 0 fallos de ab, p95=87 ms**) | **Carga local de 10 minutos terminada**; no sustituye carga remota |
+
+| **2. Rendimiento** | Estrés, spike, soak de horas, caché vs nocache, capacidad por capa, RAM/CPU simultánea y medición externa | **Pendiente**; load 10 min local ya documentada |
 | **3. Failover** | `web1` parado y recuperado; un ensayo tuvo sonda 144/145 muestras correctas | **Hecho para web1** |
-| **3. Failover** | `app1`, presentación LB master, aplicación LB master, `galera1/2`, proxy SQL, master Redis y PRIMARY Mongo; verificar continuidad y restablecimiento | **Pendiente** |
+| **3. Failover** | `app1` (64/80 muestras exitosas), presentación LB master, aplicación LB master, `galera1/2`, proxy SQL, master Redis y PRIMARY Mongo | **app1 ejecutado con 16 errores; demás pendientes** |
 | **3. Failover** | Escenarios negativos/reducción de capacidad (dos web, ambos LB, caída entry, Redis entero), si se evalúa el TEST-PLAN literal | **Pendiente; planear ventana y recuperación** |
 | **4. Chaos** | Chaos Monkey aleatorio y comparación de disponibilidad, empezando en grupo `web` y después `app` | **No ejecutado; implementado como código** |
 | **4. Chaos** | Latencia/jitter, pérdida, ancho de banda, fallos de recursos, compuestos; partición/quórum solo con precauciones | **No ejecutados**. Escenarios de reloj/disco lleno deben declararse no aplicables a VM única salvo laboratorio aislado |
