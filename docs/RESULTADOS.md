@@ -354,6 +354,14 @@ La sonda HTTP (`tests/probe.py`, 45 s programados, `/api/products/cheapest?nocac
 
 **Evidencias Ubuntu:** `results/red-app1/sonda-corregida.csv`, `results/red-app1/resumen-corregido.txt`, `results/red-app1/fallo-red-corregido.txt`. La regla se declaró eliminada por el script; validar lectura posterior con `tc qdisc show dev eth1`. **Próximo paso: diagnóstico de solo lectura** sobre API directas, Galera WSREP, proxy SQL y HAProxy; no repetir inyecciones, no reiniciar ni bootstrap Galera, no eliminar volúmenes. Clasificación: prueba de fallo de red **ejecutada con error observado/no aprobada**, recuperación no demostrada en la observación final.
 
+### Recuperación verificada después de netem app1: rutas API 200, Galera sincronizado y noqueue (25-10-2026 UTC)
+
+Tras el experimento real de `app1` con `tc netem delay 200ms 50ms` y **32/38 sondas correctas (84.21 %)**, seguido inmediatamente de `HTTP 503`, se ejecutó diagnóstico **de solo lectura**, sin reiniciar servicios, borrar volúmenes ni hacer nuevas inyecciones. `docker compose ps -a` mostró `app1–3`, `application-lb-master/backup`, `db-proxy1/2` **Up**, y `galera1–3` **Up (healthy)**. En la interfaz `eth1` de `app1`, `tc qdisc show dev eth1` devolvió **`qdisc noqueue 0: root refcnt 2`**: no había netem activa en esa interfaz.
+
+Las **tres API** respondieron directamente `/health=HTTP 200` (SQL `ready`, caché `ready`) y `/health/deep=HTTP 200` con `{"sql":true,"mongo":true,"cache":true}`. En **cada** nodo Galera, `wsrep_local_state_comment=Synced`, `wsrep_cluster_size=3`, `wsrep_cluster_status=Primary`, `wsrep_ready=ON`. La **ruta pública** `/api/health/deep` respondió **HTTP 200 en 3 de 3 verificaciones consecutivas** separadas por unos segundos.
+
+**Resultado y alcance:** se confirma **recuperación observada** después del fallo, y limpieza efectiva de netem de `app1/eth1`; **no** se cumplió la hipótesis de disponibilidad durante la perturbación ni fue inmediato el restablecimiento en la muestra final del experimento. No se puede atribuir inequívocamente el HTTP 503 a `app1`, Galera, balanceador o SQL sin correlacionar logs del intervalo **2026-10-25T03:55:15Z** y minutos siguientes. Este diagnóstico es una instantánea posterior, **no demuestra estabilidad indefinida**. El experimento sigue clasificado como fallo de disponibilidad con recuperación posterior documentada.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
