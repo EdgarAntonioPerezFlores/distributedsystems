@@ -1,5 +1,16 @@
 # Auditoría de los requisitos pendientes — TEST-PLAN puntos 1 al 5
 
+## Corte de resultados del 25-10-2026: avances y límites
+
+**Este corte es más reciente que las secciones históricas inferiores.** Implementadas las mejoras Mongo Replica Set, Redis Sentinel y proxy SQL con tres miembros Galera. **Punto 1:** verificación funcional, rondas y consistencia evidenciadas. **Punto 2:** carga de 600 s (302 663 peticiones, 0 errores reportados por ab), estrés, comparación con/sin caché y capacidad directa a `web1` (**100 000; 6374.08 req/s; p95 2 ms; 0 fallos según ab**) y `app1` sin caché (**15 233; 761.64 req/s; p95 13 ms; 0 fallos según ab**). **Pendientes:** spike 5→300→5, soak de horas y métricas CPU/RAM durante pruebas bajo carga; no equiparar las rutas directas web/API.
+
+**Punto 3:** probados failover de ambos HAProxy/Keepalived, proxy SQL, Redis Sentinel (cambio redis3→redis1 y posterior 2 réplicas), Mongo replica set (mongo1→mongo2, 97/97 lecturas), además de web/app. **Galera permanece sin prueba de parada voluntaria** por episodios repetidos de `non-Primary` temporales observados espontáneamente en Galera2/Galera3. Hubo interrupciones en varias sondas HAProxy/SQL/Redis; no afirmar SLO universal.
+
+**Punto 4:** Chaos Monkey `DRY_RUN` 38/38; reales con `web1` **42/43 (97.67%)**, `app1` **45/45 (100%)**, recuperaciones comprobadas. Quedan red/recursos/fallos compuestos y casos no seguros sujetos a evaluación. **Punto 5:** Nagios recuperado sobre mismo contenedor tras `Exited (255)`; estado exportado: **24/24 hosts UP y 30/30 servicios OK**, historial de alertas y tiempos de un ensayo web1 disponibles; envío de notificaciones externas y promedios múltiples de MTTD/MTTR no verificados. `GET /api/health/deep` HTTP 200 al finalizar las últimas pruebas.
+
+**Próximo enfoque seguro:** carga pico preliminar controlada con concurrencia baja a moderada y métricas de recursos, sin repetir paradas de bases de datos hasta investigar WSREP; mantener sin ejecutar escenarios de alto riesgo y documentarlos con honestidad. Ver `docs/RESULTADOS.md` para evidencias y limitaciones exactas.
+
+
 **Revisión:** 24 de octubre de 2026. **Fuente del alcance:** enunciado docente proporcionado por el equipo: *mejorar MongoDB 2.1, Redis 2.2/2.3 y todo Galera ToDo 3*; **ejecutar los puntos 1–5 de `resilience-lab/TEST-PLAN.md`**. Estos cinco puntos son **parte del encargo**, no opcionales. La presencia de scripts no equivale a haberlos ejecutado.
 
 ## Estado actualizado al 25 de octubre de 2026: recuperación y carga sostenida
