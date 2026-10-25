@@ -174,6 +174,14 @@ A las **2026-10-25 02:07:50 UTC** se ejecutó `docker compose pause application-
 
 **Evidencia local:** `results/failover/sonda-db-proxy1.csv` y `results/failover/resumen-db-proxy1.txt`; están en la VM y no constan incorporados a GitHub. No se reiniciaron nodos de Galera ni se eliminaron volúmenes. Siguiente diagnóstico sugerido: extraer la marca UTC, HTTP y error de la única fila fallida y verificar Sentinel antes de un ensayo de Redis.
 
+### Redis Sentinel: elección de nuevo maestro y recuperación (25-10-2026 UTC)
+
+La prueba inició con los tres Sentinel apuntando a `redis3` (`172.28.0.23`) y con quórum de tres. A las **02:36:27 UTC** se detuvo `redis3`. Los tres Sentinel detectaron posteriormente a `redis1` (`172.28.0.21`) como nuevo maestro. Durante la caída, una solicitud al catálogo respondió **HTTP 200** con traza de caché Redis.
+
+Se inició de nuevo `redis3` a las **02:37:15 UTC**. Una verificación temprana mostró temporalmente a `redis1` y `redis3` con rol master y el endpoint profundo devolvió HTTP 503. **No se dio por recuperado el sistema en ese momento.** En la verificación posterior, los Sentinel volvieron a confirmar unánimemente a `redis1`; `redis1` informó **dos réplicas conectadas**, `redis2` y `redis3` reportaron `role:slave`, ambas con `master_host:172.28.0.21` y `master_link_status:up`. Las API `app1`, `app2`, `app3` devolvieron HTTP 200 y `/api/health/deep` volvió a responder **HTTP 200** con `{"sql":true,"mongo":true,"cache":true}`.
+
+La sonda original informó **91 de 92 muestras exitosas, 98.913 % de disponibilidad muestreada**, menor que el objetivo de 99 %. La elección automática, reincorporación y recuperación funcional quedan **comprobadas**; la continuidad sin interrupción no. Evidencias locales en VM: `results/failover/sonda-redis3.csv`, `results/failover/resumen-redis3.txt`. Redis se usa como caché desechable sin persistencia; no inferir durabilidad de claves.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
