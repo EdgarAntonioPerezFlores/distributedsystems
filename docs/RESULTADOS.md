@@ -376,6 +376,19 @@ Las **tres API** respondieron directamente `/health=HTTP 200` (SQL `ready`, cach
 
 **Verificación posterior independiente:** los tres Galera reportaron `Synced/Primary/size=3/wsrep_ready=ON`; las tres API devolvieron `/health` y `/health/deep` 200; el balanceo final devolvió **tres HTTP 200**; `app1/eth1` quedó con `qdisc noqueue`. **Prueba de latencia ejecutada y con incumplimiento de disponibilidad, pero recuperación posterior comprobada.** Mantener suspendidas nuevas inyecciones y pruebas de 300 usuarios hasta determinar origen de desconexiones WSREP en esta VM.
 
+### Correlación WSREP con HTTP 503 durante netem app1 (25-10-2026, 03:55 UTC)
+
+El operador recopiló `docker compose logs --since 2026-10-25T03:55:00Z --until 2026-10-25T03:58:00Z --timestamps` de HAProxy, las API, los dos proxies SQL y Galera. Su `grep` de errores expuso sucesos **WSREP en Galera2 y Galera3** en el mismo intervalo del netem controlado en `app1`:
+
+- **03:55:15 UTC:** script confirma inicio de `tc netem delay 200ms 50ms` aplicado sólo a `app1/eth1` por 12 s programados.
+- **03:55:24 UTC:** Galera2 y Galera3 registran `connection to peer ... timed out, no messages seen in PT3S` y `last inactive check more than PT1.5S`.
+- **03:55:43 UTC:** WSREP declara nodos sospechosos/inactivos por falta de mensajes.
+- **03:55:44 UTC:** ambos registran `Received NON-PRIMARY` y `Non-primary view`; hubo pérdida transitoria de componente primario para esos miembros.
+- **03:55:46 UTC:** ambos registros contienen `Server ... synced with group`, compatible con reconexión. **03:57:31 UTC:** vuelven a constar timeouts WSREP; no afirmar que el problema general quedó resuelto definitivamente.
+- El experimento arrojó **32/38 muestras HTTP exitosas (84.21%)**, limpieza netem confirmada, HTTP 503 en la prueba final inmediata. Diagnóstico posterior: `qdisc noqueue`, 3/3 APIs `/health` y `/health/deep` HTTP 200, 3 Galera `Synced/Primary/3/ON`, 3/3 llamadas `/api/health/deep` HTTP 200.
+
+**Interpretación:** pérdida de estado `Primary` en Galera puede inutilizar temporalmente la salud de las API basada en SQL y desencadenar ausencia de backends sanos en HAProxy. Es un **mecanismo probable**, no una causalidad única demostrada: el netem se aplicó sólo en `app1`, no en las interfaces de los nodos Galera; existían incidentes WSREP similares **antes** de esta inyección. La selección de líneas mediante `grep` no revela aún eventos exactos de HAProxy o las API, y la coincidencia temporal por sí sola no determina la causa raíz. Conservar los archivos `results/red-app1/diagnostico-503.log` y `sonda-corregida.csv` para correlación, y **no seguir inyectando fallos ni ejecutar spike 300 hasta estudiar estabilidad WSREP**.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
