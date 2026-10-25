@@ -395,6 +395,12 @@ El operador recopiló `docker compose logs --since 2026-10-25T03:55:00Z --until 
 
 **Interpretación:** recuperación operativa de los tres miembros Galera y funcionamiento durante esta ventana muestreada, tras episodios de pérdida WSREP `NON-PRIMARY` alrededor de 03:55:44 UTC durante el experimento de latencia `app1`. **No** equivale a prueba de estabilidad continua de 59 s (podrían ocurrir caídas breves entre sondeos), ni confirma causa raíz o reparación definitiva. **No ejecutar nuevos fallos Galera ni spike 300 hasta revisar intermitencia.** Evidencia local: `results/galera-estabilidad/observacion.txt`.
 
+### Comprobación final de todos los servicios, repositorio actualizado y espacio disponible (25-10-2026 UTC)
+
+El operador ejecutó `git status --short` sin cambios listados y `git pull --ff-only origin main`, que actualizó la rama local de **`034dcbc` a `61cb0cb`** sin conflictos (se actualizaron `docs/ENTREGA.md`, `docs/PENDIENTES-TEST-PLAN.md` y `docs/RESULTADOS.md`). `docker compose ps` listó activos los servicios en ejecución: **web1–3, app1–3, ambos HAProxy de presentación y aplicación y sus Keepalived, presentación-entry, db-proxy1/2, galera-check1–3, galera1–3 (healthy), mongo1–3 (healthy), redis1–3 (healthy), sentinel1–3 y nagios**. Nagios llevaba **40 minutos Up**. Los servicios de inicialización one-shot completados no aparecen en la lista normal `ps`.
+
+La aplicación respondió `GET /api/health/deep` con **`{"sql":true,"mongo":true,"cache":true}` y HTTP 200**. El disco raíz `/dev/sda2` mostró **70 GB totales, 23 GB usados, 44 GB libres (35 % de uso)**. **Esta es una fotografía de estado, no un SLO continuo.** Se confirma que el proyecto estaba operativo y con documentación sincronizada en ese momento. Mantener documentados como pendientes el **spike 5→300→5**, soak de horas, failover voluntario Galera (riesgo WSREP) y evaluación estadística de MTTD/MTTR; los resultados almacenados bajo `results/` permanecen en la VM a menos que se suban expresamente.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
