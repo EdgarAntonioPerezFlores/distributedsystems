@@ -78,6 +78,12 @@ El nodo estaba `Up (healthy)` y `galera1/2` seguían detenidos. **Este resultado
 
 El operador inició **solo** el contenedor existente `galera1` con `docker start` después de comprobar que el `galera3` bootstrap estaba `Up (healthy)`. En la primera revisión después de 30 s, `galera1` seguía `health: starting`, `galera2` continuaba detenido y `galera3` continuaba saludable. **La consulta SQL en `galera3` sí confirmó** `wsrep_cluster_status=Primary`, `wsrep_cluster_size=2`, `wsrep_ready=ON`, `wsrep_local_state_comment=Synced`. El log de `galera1` incluyó `WSREP: SST received` y pasos InnoDB de recuperación. **Todavía no se había comprobado el estado final `Synced` de galera1**, así que debe verificarse antes de arrancar el tercer nodo. Si galera1 queda Synced, iniciar el contenedor galera2 sin bootstrap y confirmar `wsrep_cluster_size=3` y estados Synced/healthy de todos.
 
+### Galera recuperado: los tres nodos Synced y Primary tamaño 3 (25-10-2026)
+
+**Comprobación final recibida desde Ubuntu tras reintegrar `galera2`:** la salida de `SHOW GLOBAL STATUS` para **galera1, galera2 y galera3**, por separado, confirmó idénticos indicadores: `wsrep_local_state_comment=Synced`, `wsrep_cluster_size=3`, `wsrep_cluster_status=Primary`, `wsrep_ready=ON`. La recuperación del **clúster SQL de tres miembros está demostrada** a nivel de estado WSREP. No se publicaron todavía comparaciones de registros de negocio después del rescate; la base `store` con dos tablas había sido observada previamente en galera3.
+
+**PENDIENTE CRÍTICO:** `galera3` se recuperó con Compose override temporal en `results/cierre/galera3-bootstrap.yml` (`MARIADB_GALERA_CLUSTER_BOOTSTRAP=yes`, `MARIADB_GALERA_FORCE_SAFETOBOOTSTRAP=yes`, `MARIADB_GALERA_CLUSTER_ADDRESS=gcomm://`). Hay que recrear **solo galera3** usando `docker-compose.yml` normal **sin override ni bootstrap**, tras confirmar que galera1 y galera2 siguen Synced/Primary; después volver a crear el sidecar `galera-check3` que comparte espacio de red con galera3 y volver a comprobar `wsrep_cluster_size=3`. No reiniciar host ni arrancar failover hasta resolverlo. Keepalived sigue con repetidos `daemon is already running` y necesita reparación por separado.
+
 ## Equipo y entorno
 
 - Servidor: Ubuntu en una VM de VirtualBox; Docker Compose, proyecto `distributed-ha-lab`.
