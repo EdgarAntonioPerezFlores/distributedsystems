@@ -278,6 +278,12 @@ Tras el aborto previo de la prueba real de Chaos Monkey a causa del HTTP 503, el
 
 **Alcance temporal:** al llevar Nagios detenido unas tres horas, **no está demostrado que observase las ejecuciones recientes de Chaos Monkey sobre web1 y app1**. Los resultados de Chaos Monkey siguen siendo válidos por sus propios archivos, pero no deben atribuirse a Nagios. Próximo paso: `docker start` del contenedor **existente** (no `up --force-recreate` ni `down -v`) y comprobar procesos, endpoint HTTP, logs internos y salud de la aplicación; evitar recrearlo antes de conservar registros y evidencias.
 
+### Nagios reiniciado sobre contenedor existente: HTTP 401 y rsyslog PID (25-10-2026)
+
+El operador ejecutó `docker start` sobre el contenedor **existente** `distributed-ha-lab-nagios-1` (sin recrearlo ni borrar datos). A los **10 segundos** el estado fue **`Up`**, puerto publicado sólo en `127.0.0.1:8088`, y `curl http://127.0.0.1:8088/nagios/` devolvió **HTTP 401** (autenticación exigida, no implica caída del servidor web). El arranque anunció `Successfully launched command file worker with pid 44`. La salud de la aplicación `/api/health/deep` devolvió **HTTP 200** con `{"sql":true,"mongo":true,"cache":true}`.
+
+**Advertencias del arranque:** (1) varios hosts sin `contacts/contactgroups`: no suponer notificaciones externas configuradas; (2) mensajes repetidos `rsyslogd: pidfile '/run/rsyslogd.pid' and pid ... already exist`, `run failed with error -3000`: sugiere conflicto de arranque de rsyslog o PID antiguo, **sin causa confirmada**, no borrar el PID a ciegas. La observación de sólo 10 s no confirma que Nagios continúe ejecutándose ni que las comprobaciones se actualicen. Próximo paso: inspección de solo lectura de estado sostenido, procesos, archivos `status.dat`/`nagios.log` y una segunda comprobación HTTP después de unos segundos. Conservar histórico de alertas y no repetir Chaos Monkey por esta cuestión.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
