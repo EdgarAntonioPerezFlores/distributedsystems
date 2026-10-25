@@ -244,6 +244,18 @@ Tras el aborto previo de la prueba real de Chaos Monkey a causa del HTTP 503, el
 
 **Importante:** esto justifica preparar una prueba controlada de **un único servidor web** con guardas de salud y recuperación automática, **no** una prueba de parada de nodos Galera; las pérdidas espontáneas de quórum observadas antes siguen pendientes de diagnóstico definitivo.
 
+### Chaos Monkey real: falla y recuperación automática de web1 (25-10-2026 UTC)
+
+**Preflight:** `web1,web2,web3` activos; `galera1,galera2,galera3` reportaron en comprobaciones sucesivas `Synced`, `cluster_size=3`, `cluster_status=Primary`, `wsrep_ready=ON`; `/api/health/deep` devolvió **3/3** respuestas saludables `{"sql":true,"mongo":true,"cache":true}`.
+
+**Inyección real** ejecutada mediante `resilience-lab/chaosmonkey/chaosmonkey.py`, con `DRY_RUN=false`, `GROUP=web`, `TARGETS=web1`, `ACTION=stop`, `MAX_CONCURRENT=1`, `INTERVAL=120`, `DOWNTIME=10`, `DURATION=35`, `PROBE_INTERVAL=1`, `PROBE_URL=http://127.0.0.1/api/products/cheapest?nocache=1`. Registro de Chaos Monkey: `stop web1` **OK en t=6.0 s**, `restore web1` **OK en t=17.9 s**, final `done; all targets restored` **t=45.7 s**. La parada real duró aproximadamente 11.9 s según la línea temporal de la herramienta, incluyendo tiempos de operación Docker.
+
+**Resultados medidos:** `Faults injected=1`, `Probes sent=43`, `Probes failed=1`, **42/43** correctas, `Availability %=97.67` (disponibilidad **muestreada**, no disponibilidad de tráfico bajo carga), `Longest outage s=1.0` (estimación a intervalos de sondeo de 1 s) y `Avg probe latency ms=17.1` en sondas exitosas. **No se alcanzó el objetivo de 99 % en esta ventana corta**; investigar tiempo y causa de la sonda fallida revisando `results/chaos-web-real/summary.json`.
+
+**Recuperación:** tras la prueba, `web1,web2,web3` aparecieron `Up`; `/api/health/deep` devolvió **HTTP 200** con `{"sql":true,"mongo":true,"cache":true}`. El ensayo valida una parada real limitada a `web1` y recuperación posterior; **no valida** todos los escenarios del punto 4 ni autoriza fallos sobre Galera (quórum transitoriamente inestable).
+
+**Evidencias locales VM:** `results/chaos-web-real/summary.json`, `results/chaos-web-real/ejecucion.txt`. No confundir con el dry-run previo.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
