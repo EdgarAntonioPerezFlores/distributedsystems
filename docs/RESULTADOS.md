@@ -296,6 +296,19 @@ El operador exportó `/opt/nagios/var/status.dat` desde el contenedor Nagios a `
 
 **Alcance:** el análisis de esta ejecución identifica estados actuales y `has_been_checked`; no valida la antigüedad de los últimos checks, aunque el script leyó `last_check`. La ausencia de estados distintos de UP/OK **no prueba** ausencia de problemas entre sondeos. Las alertas históricas de Nagios evidencian detección, pero **no se han medido promedios estadísticos de MTTD/MTTR de múltiples inyecciones ni verificado envío de notificaciones externas**. Se recuperó el monitoreo sin recrear el contenedor. Aún quedan pruebas de rendimiento (spike, soak, capacidad por capa), escenarios Chaos adicionales y failover Galera suspendido por cortes transitorios de WSREP.
 
+### Rendimiento directo por capa: web1 y app1 con 5 conexiones (25-10-2026 UTC)
+
+El operador ejecutó ApacheBench (`ab -k -c 5 -t 20 -n 100000`) directamente desde Ubuntu contra IP de contenedor **`web1:80`** (`172.31.0.2`, endpoint `/`) y **`app1:8080`** (`172.31.0.5`, endpoint `/products/cheapest?nocache=1`). Ambos `curl` de preflight pasaron y la salud profunda fue `{"sql":true,"mongo":true,"cache":true}` antes y después (**HTTP 200** al final).
+
+| Escenario | Completadas | Fallidas según ab | Rendimiento | p95 | Tiempo estimado |
+|---|---:|---:|---:|---:|---:|
+| Nginx `web1` `GET /` directo | **100 000** | **0** | **6374.08 req/s** | **2 ms** | **15.69 s** (alcanzó `-n 100000` antes de `-t 20`) |
+| Node `app1` `GET /products/cheapest?nocache=1` directo | **15 233** | **0** | **761.64 req/s** | **13 ms** | **20.0 s** (límite de tiempo) |
+
+Ambos caminos evitaron balanceadores anteriores y `app1` evitó la caché de catálogo. **Las rutas realizan trabajos muy distintos:** no concluir que la capa web es X veces más eficiente ni atribuir exclusivamente al balanceador la diferencia de throughput. `Failed requests=0` en ApacheBench no equivale a confirmación del contador `Non-2xx responses`: revisar los reportes completos para este dato y p50/p99 si se requiere. Las pruebas directas tampoco midieron la capacidad aislada del motor SQL. **No se registró CPU/RAM simultáneamente bajo esta carga.**
+
+**Evidencias locales en VM:** `results/capacidad/web1-directo.txt` y `results/capacidad/app1-directo.txt`. **Pendientes del punto 2:** escenario spike exigido de 5→300→5, soak de horas y desglose de recursos durante carga, además de separación detallada de las capas restantes. Los experimentos de 300 usuarios y de varias horas deben planificarse con cuidado por las pérdidas de quórum temporales observadas en Galera.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
