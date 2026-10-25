@@ -340,6 +340,12 @@ Memoria `web1`: **5.156 → 5.621 → 6.125 MiB**; `app1`: **61.55 → 61.88 →
 
 Verificación de ApacheBench en los archivos de cada fase: **`Complete requests: 3000/6795/4557`**, **`Failed requests: 0`** y **199.74/452.79/303.74 req/s**. El comando `grep` buscó `Non-2xx responses:` y **no imprimió esa línea** en ninguno de los tres informes; en ApacheBench, en general se muestra la línea cuando ocurre una respuesta no-2xx. Salud actual final: `{"sql":true,"mongo":true,"cache":true}`, **HTTP 200**. No se puede concluir ausencia de fugas en prueba de horas usando sólo tres muestras puntuales. El spike de **5→300→5** y soak siguen pendientes.
 
+### Intento fallido de latencia de red app1: error de comillas previo a netem (25-10-2026 UTC)
+
+Se intentó el caso de Chaos Engineering de red con `scripts/network-fault.sh app1 delay 15` (latencia programada 200 ± 50 ms). La salud inicial `GET /api/health/deep` fue `{"sql":true,"mongo":true,"cache":true}`, la imagen `distributed-ha-nettools` se construyó correctamente, y la sonda reportó **57/57 muestras exitosas (100 % de disponibilidad muestreada)**. **La inyección de latencia falló y NO se demostró**: `results/red-app1/fallo-red.txt` terminó con `sh: syntax error: unterminated quoted string` al tratar de obtener la interfaz mediante el comando `ip route get`/AWK mal escapado. La ejecución terminó con `/api/health/deep` **HTTP 200**. Las 57/57 muestras constituyen una línea base sin fallo de red confirmado, **no prueba de tolerancia a latencia**.
+
+**Corrección de código realizada en GitHub:** `scripts/network-fault.sh` commit `71ec7af` separa `docker run ... ip route get` de AWK local para evitar comillas anidadas, y elimina qdisc en limpieza **solo si la invocación aplicó la regla**. Se comprobó sintaxis Bash en entorno de preparación, **pero no se ha verificado la inyección real en la VM**; la prueba deberá repetirse tras sincronizar código y confirmar red/estado. No se detuvo ningún nodo de Galera en este intento.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
