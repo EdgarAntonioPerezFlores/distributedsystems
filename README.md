@@ -1,5 +1,14 @@
 # Sistema distribuido de tres capas — laboratorio VirtualBox
 
+**Universidad:** Universidad del Caribe  
+**Licenciatura:** Ingeniería en Datos e Inteligencia Organizacional  
+**Asignatura:** Sistemas distribuidos
+
+**Integrantes:**
+
+- Edgar Antonio Perez Flores
+- Ana Daniela Fernandes Altamirano
+
 Proyecto académico basado en [tuxtter/distributedsystems](https://github.com/tuxtter/distributedsystems), con mejoras de MongoDB, Redis y acceso a Galera. El servidor corre en Ubuntu dentro de VirtualBox; el compañero genera tráfico desde otra computadora.
 
 **Estado de entrega (24 de octubre de 2026):** los tres entregables base (**diagrama JPG, documentación Markdown y configuraciones/IaC**) están incorporados en `main`. Se verificaron 3 Galera, 3 MongoDB, quórum Redis Sentinel, balanceo web/API, replicación SQL, pruebas funcionales, carga local y recuperación de `web1`. **Nagios ya tiene tres capturas reales** (24 hosts UP → 23 UP/1 DOWN → 24 UP, 30 servicios OK). Quedan pendientes las pruebas de carga externa, failover completo y Chaos Engineering del plan ampliado; no son resultados que deban darse por hechos. Todo corre en una VM, no en producción. **[Consulta primero el resumen de entrega](docs/ENTREGA.md).**
