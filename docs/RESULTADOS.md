@@ -309,6 +309,18 @@ La revisión adicional de `results/sonda-fallo-app1.csv` identificó la fila 91 
 
 **Límite:** el nombre del CSV no es prueba de que se haya apagado `app1`; no aparece un `results/fault-*-app1.log` en el inventario. **Sigue pendiente probar el failover de la API** con inicio/fin del fallo, sonda simultánea y recuperación documentada. El disco sigue en **95 % (1.3 GB libres)**, de modo que se prioriza revisar espacio y guardar una muestra pequeña de recursos sin inyectar fallos.
 
+### Failover real app1: disponibilidad parcial y recuperación (24-10-2026, 23:54Z)
+
+**Datos de una ejecución real aportados desde Ubuntu:** la prueba `bash scripts/fault.sh stop app1 30` detuvo `distributed-ha-lab-app1-1` a partir de **23:54:54Z**, con recuperación solicitada a las **23:55:26Z** (hora real del contenedor detenerse/iniciarse no cuantificada). `app2` y `app3` seguían `Up 4 hours` al finalizar, mientras `app1` aparecía `Up 45 seconds`. La sonda `tests/probe.py http://localhost --seconds 100` escribió `results/cierre/sonda-failover-app1.csv` y el resumen `results/cierre/resumen-failover-app1.txt`:
+
+```json
+{"samples":80,"success":64,"sample_availability_pct":80.0}
+```
+
+**Resultado mixto:** `app1` fue parado y restaurado y el `/api/health/deep` final devolvió `{"sql":true,"mongo":true,"cache":true}`. **Sin embargo, la sonda tuvo 16/80 muestras no exitosas (20 %), por lo que la continuidad de la aplicación durante el fallo NO se demostró plenamente y el failover no puede declararse aprobado.** El tiempo de sonda registrado en muestras no coincide necesariamente con duración de pared, porque las peticiones pueden esperar o agotar el timeout de 3 s. Antes de repetir, clasificar en CSV las 16 respuestas fallidas según HTTP, error, timestamp UTC y traza, y contrastar con health de los backends/LB durante la inyección.
+
+**Observación adicional:** al iniciar `app1` vía `docker compose start`, Compose notificó espera de clústeres Galera/Mongo y ejecución de trabajos `mongo-init` y `catalog-init`; no consta en esta salida daño de datos, pero conviene vigilar dependencias y logs en futuras pruebas. Disco raíz **25 GB / 1.8 GB libres / 93 %** sin incremento tras quitar revisiones Snap. Antes de carga/Chaos se prevé ampliar el VDI de VirtualBox a unos 60 GB, confirmar layout con `lsblk` y extender partición y sistema de archivos sin borrar datos.
+
 ## Registro de cada fallo
 
 Copiar esta ficha por escenario y añadir ruta de evidencia:
