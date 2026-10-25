@@ -1,6 +1,6 @@
 # Informe de resultados — laboratorio de sistema distribuido
 
-**Estado actualizado (24-10-2026):** sistema de tres capas desplegado y probado en Ubuntu/VirtualBox; replicación Galera y prueba funcional MongoDB comprobadas; quórum Sentinel y rutas HTTP verificadas; caída reversible de `web1` y recuperación observadas. **Tres capturas PNG de Nagios ya están publicadas**, con transición visual de hosts **24 UP → 23 UP / 1 DOWN → 24 UP** y los **30 servicios OK** en esas vistas. Las mediciones externas prolongadas, fallos de balanceadores y nodos de datos, Chaos Engineering y MTTD/MTTR aún están pendientes. No se inventan resultados. [Resumen para entregar](ENTREGA.md) · [Capturas Nagios](evidencias/README.md).
+**Estado actualizado (25-10-2026 UTC):** sistema de tres capas desplegado y probado en Ubuntu/VirtualBox; replicación Galera y prueba funcional MongoDB comprobadas; quórum Sentinel y rutas HTTP verificadas; caída reversible de `web1` y recuperación observadas. **Tres capturas PNG de Nagios ya están publicadas**, con transición visual de hosts **24 UP → 23 UP / 1 DOWN → 24 UP** y los **30 servicios OK** en esas vistas. Las mediciones externas prolongadas, fallos de balanceadores y nodos de datos, Chaos Engineering y MTTD/MTTR aún están pendientes. No se inventan resultados. [Resumen para entregar](ENTREGA.md) · [Capturas Nagios](evidencias/README.md).
 
 ### Recuperación de la ruta HTTP después de reinicio: comprobada (25-10-2026 UTC)
 
@@ -8,13 +8,34 @@
 
 Se reiniciaron **solo** `app1`, `app2` y `app3`, que posteriormente aparecieron `Up`; sus logs de `GET /health` muestran **HTTP 200 en cada nodo**. La solicitud de extremo a extremo `GET http://localhost/api/health/deep` devolvió **HTTP 200** y mostró `x-request-trace: presentation-lb-master -> webnode3 -> application-lb-master -> app3`. La respuesta del usuario presenta la línea JSON parcialmente superpuesta por otro `echo`; por ello **no se transcriben valores individuales sql/mongo/cache de ese cuerpo sin repetir una comprobación limpia**. `GET http://localhost/api/products/cheapest` devolvió **HTTP 200** y una lista JSON de **10 productos**, con traza `presentation-lb-master -> webnode2 -> application-lb-master -> app1 -> redis (cache miss) -> galera-via-proxy -> redis (cache write)`.
 
-**Interpretación:** la ruta web/API/SQL/caché volvió a responder después de la recuperación de Galera y Keepalived. Esto **no constituye** ensayo de alta disponibilidad con fallos simultáneos, carga sostenida ni validación de toda la plataforma bajo estrés. Falta repetir `bash scripts/verify.sh` y revisar Mongo/Redis/VIPs después de recuperación, así como continuar las pruebas pendientes en `resilience-lab/TEST-PLAN.md`. Mantener los respaldos en `backups/galera-resguardo/` y no volver a habilitar el bootstrap temporal de galera3.
+**Interpretación:** la ruta web/API/SQL/caché volvió a responder después de la recuperación de Galera y Keepalived. Esto **no constituye** ensayo de alta disponibilidad con fallos simultáneos, carga sostenida ni validación de toda la plataforma bajo estrés. Se ejecutó posteriormente `bash scripts/verify.sh` con código 0; su resultado completo queda en la sección de verificación integral final. La presencia individual de VIPs puede comprobarse por separado, así como continuar las pruebas pendientes en `resilience-lab/TEST-PLAN.md`. Mantener los respaldos en `backups/galera-resguardo/` y no volver a habilitar el bootstrap temporal de galera3.
 
 ### Verificación integral final tras recuperación (25-10-2026 UTC)
 
 **Evidencia recibida desde la VM:** `bash scripts/verify.sh > results/cierre/verificacion-posrecuperacion.txt 2>&1` terminó con **código de salida 0**. El script verifica listado de contenedores, salud HTTP profunda, estado WSREP de `galera1`, `galera2`, `galera3`, estado del réplica set MongoDB desde `mongo1`, observaciones y quórum de los tres Sentinel, y nueve consultas al catálogo por HTTP. Las últimas líneas compartidas muestran múltiples `HTTP/1.1 200 OK` con rutas que alternan `webnode1, webnode2, webnode3` y `app1, app2, app3`; además trazan `redis -> cache hit`. Una consulta independiente a `http://localhost/api/health/deep` imprimió explícitamente `{"sql":true,"mongo":true,"cache":true}`.
 
 **Conclusión:** recuperación funcional integral confirmada tras reinicio del host, recuperación de Galera con bootstrap temporal retirado, recreación de monitores y Keepalived, y reinicio de los procesos API. No prueba continuidad durante la caída ni certifica aún carga prolongada o todos los failovers del plan. **Evidencia local:** `results/cierre/verificacion-posrecuperacion.txt` (no subida al repositorio; revisar secretos antes de publicar). Se conserva histórico del failover anterior app1 64/80 muestras exitosas y los ensayos aún pendientes.
+
+### Ensayo de carga corto c20/t60, catálogo con Redis (25-10-2026 UTC)
+
+**Comando ejecutado localmente en la VM:** `ab -k -c 20 -t 60 http://127.0.0.1/api/products/cheapest` y salida guardada por el operador en `results/carga/carga-20usuarios-60s.txt` (archivo local, no subido a GitHub). Host de prueba: `127.0.0.1:80`, ruta `/api/products/cheapest`, documento de 1163 bytes, 20 conexiones concurrentes durante 60.020 segundos.
+
+| Métrica de ApacheBench | Valor observado |
+|---|---:|
+| Solicitudes completas | **24 692** |
+| Solicitudes fallidas reportadas | **0** |
+| Rendimiento promedio | **411.39 solicitudes/s** |
+| Tiempo por solicitud (concurrencia 20) | **48.615 ms** |
+| Tiempo por solicitud promedio por usuario en concurrencia | **2.431 ms** (indicador calculado por ab) |
+| p50 / p95 / p99 | **39 / 116 / 167 ms** |
+| Máximo | **425 ms** |
+| Transferencia | **593.68 KiB/s** |
+| Solicitudes HTTP Keep-Alive contabilizadas | **0** aun con opción `-k` |
+| Respuestas no-2xx | `Non-2xx responses` no apareció en el resumen aportado; **no se realizó verificación HTTP independiente por solicitud** |
+| Comprobación de salud posterior | `{"sql":true,"mongo":true,"cache":true}` |
+| Contenedores al finalizar | `docker compose ps --status running | wc -l` = **33 líneas**; incluye cabecera, aproximadamente **32 contenedores** en ejecución |
+
+**Interpretación:** prueba corta terminada sin peticiones fallidas según ApacheBench. p95 de 116 ms queda por debajo del objetivo de referencia de 200 ms indicado en `resilience-lab/TEST-PLAN.md`. Se midió la ruta HTTP local completa con **caché Redis activada**; no implica igual rendimiento desde un equipo externo, durante diez minutos, con caché desactivada o bajo fallos. Aunque se pidió `-k`, ApacheBench contabilizó cero conexiones reutilizadas. **Siguientes pruebas pendientes:** carga 20/600 s, estrés, spike, soak, comparación con/sin caché y recursos CPU/RAM bajo carga. Sin evidencia de tasas de error de estas pruebas pendientes.
 
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
@@ -364,6 +385,7 @@ Ejecutada en el servidor VM con `bash tests/load.sh "http://192.168.1.88" 5 30` 
 | Baseline funcional | Verificación de servicios | — | — | API 200; subsistemas según arriba | Pendiente | `results/baseline.txt` (VM) | Comprobado |
 | Smoke local | 5 / 30 s | 303.56 | 14 / 34 / 55 | 9107 completas / 0 fallidas por ab / no-2xx no informado | Pendiente | `results/ab-20261024T153524Z-c5/` (VM) | Medido |
 | Funcional remoto | Equipo externo | — | — | — | — | Pendiente | No ejecutado / no aportado |
+| Carga corta c20/t60 | 20 / 60 s | 411.39 | 39 / 116 / 167 | 24692 completas / 0 fallidas por ab / no-2xx no verificado por solicitud | Pendiente | `results/carga/carga-20usuarios-60s.txt` (VM) | Medido | 
 | Carga | 20 / 600 s | — | — | — | — | Pendiente | No ejecutado |
 | Estrés | 10, 25, 50, 100 / 60 s cada nivel | — | — | — | — | Pendiente | No ejecutado |
 | Spike | 5 → nivel acordado → 5 | — | — | — | — | Pendiente | No ejecutado |
@@ -420,7 +442,7 @@ Copiar esta ficha por escenario y añadir ruta de evidencia:
 | Punto | Evidencia requerida | Estado |
 |---|---|---|
 | 1 | Salud, headers, consistencia SQL, reseña MongoDB, caché | **Comprobado en la VM:** salud y balanceo, escritura/lectura Galera, reseña Mongo vía API y caché; cliente remoto con carga instrumentada pendiente |
-| 2 | Carga remota/estrés/spike/soak con recursos | **Smoke local medido** (9,107 peticiones); ensayos externos y prolongados pendientes |
+| 2 | Carga remota/estrés/spike/soak con recursos | **Smoke local medido** (9,107 peticiones) y **carga corta c20/60s** (24,692 peticiones); ensayos externos y prolongados pendientes |
 | 3 | Failover de web/API/LB/Galera/proxy/Redis/Mongo y continuidad | **web1 parado y recuperado;** en primera campaña 144/145 muestras exitosas; failover de las demás capas pendiente |
 | 4 | Chaos Monkey, red, recursos y límites | **No ejecutado** en esta campaña; no atribuir resultados |
 | 5 | Nagios, MTTD/MTTR, alertas y presupuesto de error | **Tres PNG host DOWN → UP y logs del mismo ensayo con servicio CRITICAL HARD y recuperación OK HARD**; tiempos de una ejecución calculados, pero no media estadística MTTD/MTTR ni error budget con carga |
