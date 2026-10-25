@@ -270,6 +270,14 @@ Tras el aborto previo de la prueba real de Chaos Monkey a causa del HTTP 503, el
 
 **Archivos locales en VM:** `results/chaos-app-real/summary.json` y `results/chaos-app-real/ejecucion.txt`.
 
+### Nagios: contenedor detenido Exited (255), evidencias históricas y recuperación pendiente (25-10-2026 UTC)
+
+**Diagnóstico aportado desde Ubuntu:** `docker compose ps -a nagios` y `docker ps -a --filter name=nagios` mostraron un contenedor existente (`distributed-ha-lab-nagios-1`, imagen `jasonrivers/nagios:latest`) en estado **`Exited (255)` desde hacía aproximadamente tres horas**. `docker inspect`: `State.Status=exited`, `ExitCode=255`, `OOMKilled=false`, `RestartCount=0`, `State.Error` vacío. `df -h /` indicó **70 GB total, 23 GB usados, 44 GB libres (35 %)**. El código 255 y los mensajes mostrados no identifican causa raíz; no afirmar OOM, error de configuración o reinicio del daemon como causas confirmadas.
+
+**Registros históricos recuperables:** `docker compose logs nagios` incluyó `HOST ALERT: web1;DOWN`, `SERVICE ALERT: web1;Website HTTP;CRITICAL;HARD` y posterior `OK/UP`; asimismo alertas `SERVICE ALERT: app1;API all dependencies;CRITICAL` y recuperación `OK`, `HOST ALERT: app1;DOWN/UP`, y alertas transitorias 503 de dependencias API/Galera seguidas de `OK`. También figuran advertencias por hosts sin `contacts/contactgroups`: la evidencia de monitoreo de Nagios **no garantiza notificaciones por correo**. En los estados retenidos, hosts y servicios se mostraron UP/OK antes de la detención.
+
+**Alcance temporal:** al llevar Nagios detenido unas tres horas, **no está demostrado que observase las ejecuciones recientes de Chaos Monkey sobre web1 y app1**. Los resultados de Chaos Monkey siguen siendo válidos por sus propios archivos, pero no deben atribuirse a Nagios. Próximo paso: `docker start` del contenedor **existente** (no `up --force-recreate` ni `down -v`) y comprobar procesos, endpoint HTTP, logs internos y salud de la aplicación; evitar recrearlo antes de conservar registros y evidencias.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
