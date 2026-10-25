@@ -58,6 +58,22 @@ El bloque finalizó con éxito y confirmó **70 GB totales, 46 GB libres (33 % o
 
 **Decisión:** `galera3` es el candidato más avanzado **según estas salidas**. El UUID nulo en los tres nodos es una particularidad a vigilar y no demuestra por sí solo que toda la información esté íntegra. Aún **no consta ningún arranque de recuperación completado**, ni validación SQL posterior, ni reintegración de galera1/2. Iniciar solo `galera3` en una configuración **temporal** mediante variables de la imagen Bitnami `MARIADB_GALERA_CLUSTER_BOOTSTRAP=yes` y `MARIADB_GALERA_FORCE_SAFETOBOOTSTRAP=yes`, con `MARIADB_GALERA_CLUSTER_ADDRESS=gcomm://`, sin arrancar dependencias ni modificar los otros dos nodos. Verificar `wsrep_cluster_status=Primary`, `wsrep_cluster_size=1`, datos SQL, y solo después reintegrar los demás. Quitar el override temporal al recuperar tamaño 3. No ejecutar `down -v` ni `first-start.sh`.
 
+### Bootstrap de galera3 verificado: Primary, tamaño 1 y catálogo presente (25-10-2026)
+
+Tras ejecutar un arranque controlado solo de `galera3` con override temporal de Compose, el operador mostró logs **`status: primary`**, `members(1)`, `ready for connections`, `Synchronized with group, ready for connections` y recuperación InnoDB. La comprobación SQL posterior confirmó:
+
+| Indicador | Valor |
+|---|---|
+| `wsrep_cluster_status` | `Primary` |
+| `wsrep_cluster_size` | `1` |
+| `wsrep_connected` | `ON` |
+| `wsrep_ready` | `ON` |
+| `wsrep_local_state_comment` | `Synced` |
+| Bases de usuario visibles | `store`, `test` |
+| Tablas de `store` | `2` |
+
+El nodo estaba `Up (healthy)` y `galera1/2` seguían detenidos. **Este resultado acredita recuperación del nodo candidato, no integridad total de datos ni quórum de tres nodos.** Paso siguiente: iniciar `galera1` normalmente **sin bootstrap** y comprobar su sincronización antes de intentar `galera2`. Una vez el clúster vuelva a tamaño 3, retirar override temporal de `galera3` sin arrancar otra instancia bootstrap.
+
 ## Equipo y entorno
 
 - Servidor: Ubuntu en una VM de VirtualBox; Docker Compose, proyecto `distributed-ha-lab`.
