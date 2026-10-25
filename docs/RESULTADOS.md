@@ -206,6 +206,14 @@ La preparación del ensayo de parada reversible de `galera2` verificó la existe
 
 **Acción requerida:** confirmar estado actual de los tres nodos con marcas horarias, estado contenedores/sidecars y logs WSREP del tercer nodo; no detener nodos adicionales, no reiniciar el stack y no bootstrapear un nodo sin diagnóstico de quorum y respaldo verificable. No afirmar clúster sano ni pérdida de datos a partir de estas lecturas sucesivas.
 
+### Recuperación espontánea de Galera3 tras episodio non-Primary (25-10-2026 UTC)
+
+**Diagnóstico no destructivo aportado por operador:** a las **02:58:22 UTC**, `galera1`, `galera2`, `galera3` aparecieron `Up (healthy)`, con sus `galera-check1/2/3` y `db-proxy1/2` activos. Consultas directas de WSREP a los tres nodos confirmaron en **todos** `wsrep_local_state_comment=Synced`, `wsrep_cluster_size=3`, `wsrep_cluster_status=Primary`, `wsrep_connected=ON`, `wsrep_ready=ON`, la misma `wsrep_cluster_state_uuid=95699c3d-d00b-11f1-bf87-9aeabf42b0b9` y lista de tres direcciones. `GET /api/health/deep` devolvió **HTTP 200**, `{"sql":true,"mongo":true,"cache":true}`.
+
+**Eventos relevantes de galera3:** a las **02:55:55 UTC** sus logs registraron `Received NON-PRIMARY`, `synced -> connected` y vista temporal de un miembro; a las **02:55:56 UTC** registraron `Full re-merge ... 3 of 3` y `component=PRIMARY`; a las **02:55:57 UTC** registraron `Synchronized with group, ready for connections`. A las **02:57:57** se registró advertencia `last inactive check more than PT1.5S ago (PT1.64144S)`. El episodio fue transitorio, **pero no se identificó su causa**; no inferir pérdida/corrección de datos ni atribuirlo a una red o recurso específico sin evidencias adicionales.
+
+**Estado de la prueba planificada de Galera2:** continúa **no ejecutada**; el script había cancelado el ensayo en preflight cuando `galera3` no estaba Synced. Antes de inyectar un nuevo fallo, comprobar estabilidad mantenida de los tres miembros (3/Primary/Synced/ON), quórum y margen de recursos, debido a la partición transitoria espontánea. No hacer bootstrap, parar varios miembros ni eliminar volúmenes.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
