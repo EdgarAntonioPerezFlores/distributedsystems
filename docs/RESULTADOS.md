@@ -238,6 +238,12 @@ El operador intentó iniciar el experimento real de Chaos Monkey sobre un único
 
 **Pendiente:** identificar el motivo del HTTP 503 con cuerpo de respuesta sin `-f`, comprobaciones `/health` y `/health/deep` por cada API, registros de aplicación y revisión de WSREP de Galera. No repetir inyección hasta obtener una línea base saludable y estable.
 
+### Restablecimiento de salud tras preflight abortado de Chaos Monkey (25-10-2026)
+
+Tras el aborto previo de la prueba real de Chaos Monkey a causa del HTTP 503, el operador repitió el diagnóstico sin inyectar fallos. El endpoint `/api/health/deep` respondió **3/3 veces HTTP 200** con `{"sql":true,"mongo":true,"cache":true}`; cada API `app1`, `app2`, `app3` respondió **HTTP 200** tanto para `/health` como para `/health/deep`. Los tres Galera informaron `wsrep_local_state_comment=Synced`, `wsrep_cluster_size=3`, `wsrep_cluster_status=Primary` y `wsrep_ready=ON`. La búsqueda filtrada de errores en los últimos 15 minutos de logs de API **no devolvió coincidencias**, lo que no excluye errores no incluidos en el filtro. El HTTP 503 previo fue transitorio; **su causa sigue sin establecerse**.
+
+**Importante:** esto justifica preparar una prueba controlada de **un único servidor web** con guardas de salud y recuperación automática, **no** una prueba de parada de nodos Galera; las pérdidas espontáneas de quórum observadas antes siguen pendientes de diagnóstico definitivo.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
