@@ -346,6 +346,14 @@ Se intentó el caso de Chaos Engineering de red con `scripts/network-fault.sh ap
 
 **Corrección de código realizada en GitHub:** `scripts/network-fault.sh` commit `71ec7af` separa `docker run ... ip route get` de AWK local para evitar comillas anidadas, y elimina qdisc en limpieza **solo si la invocación aplicó la regla**. Se comprobó sintaxis Bash en entorno de preparación, **pero no se ha verificado la inyección real en la VM**; la prueba deberá repetirse tras sincronizar código y confirmar red/estado. No se detuvo ningún nodo de Galera en este intento.
 
+### Fallo real bajo latencia app1: 32/38 sondas y HTTP 503 posprueba (25-10-2026 03:55 UTC)
+
+**Ejecución efectiva** de `scripts/network-fault.sh app1 delay 12` tras corregir comillas; preflight `GET /api/health/deep` `{"sql":true,"mongo":true,"cache":true}` (salud inicial). El ayudante se construyó y localizó **`eth1`** en el espacio de red de `app1`. A las **2026-10-25T03:55:15Z** instaló `qdisc netem ... delay 200ms 50ms` por **12 s programados**; se observó la regla activa en `tc qdisc`; limpieza reportó **`Regla temporal eliminada.`** No se pararon contenedores deliberadamente.
+
+La sonda HTTP (`tests/probe.py`, 45 s programados, `/api/products/cheapest?nocache=1`) informó **38 muestras**, **32 exitosas**, **6 fallidas**, **84.2105263 % de disponibilidad muestreada**. **No cumple la hipótesis del 99 %** para este experimento. La comprobación final de `/api/health/deep` devolvió **HTTP 503** con cuerpo HTML `No server is available to handle this request.` Este mensaje es compatible con ausencia de backends sanos en HAProxy, pero no identifica todavía cuál salto ni si fue causado por la latencia sola o por otra degradación simultánea (historia previa de inestabilidad WSREP). **No afirmar recuperación final, integridad de datos ni causa raíz sin una nueva inspección.**
+
+**Evidencias Ubuntu:** `results/red-app1/sonda-corregida.csv`, `results/red-app1/resumen-corregido.txt`, `results/red-app1/fallo-red-corregido.txt`. La regla se declaró eliminada por el script; validar lectura posterior con `tc qdisc show dev eth1`. **Próximo paso: diagnóstico de solo lectura** sobre API directas, Galera WSREP, proxy SQL y HAProxy; no repetir inyecciones, no reiniciar ni bootstrap Galera, no eliminar volúmenes. Clasificación: prueba de fallo de red **ejecutada con error observado/no aprobada**, recuperación no demostrada en la observación final.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
