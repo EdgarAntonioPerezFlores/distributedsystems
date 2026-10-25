@@ -74,6 +74,10 @@ Tras ejecutar un arranque controlado solo de `galera3` con override temporal de 
 
 El nodo estaba `Up (healthy)` y `galera1/2` seguían detenidos. **Este resultado acredita recuperación del nodo candidato, no integridad total de datos ni quórum de tres nodos.** Paso siguiente: iniciar `galera1` normalmente **sin bootstrap** y comprobar su sincronización antes de intentar `galera2`. Una vez el clúster vuelva a tamaño 3, retirar override temporal de `galera3` sin arrancar otra instancia bootstrap.
 
+### Galera1 se une al clúster recuperado: Primary tamaño 2 (25-10-2026)
+
+El operador inició **solo** el contenedor existente `galera1` con `docker start` después de comprobar que el `galera3` bootstrap estaba `Up (healthy)`. En la primera revisión después de 30 s, `galera1` seguía `health: starting`, `galera2` continuaba detenido y `galera3` continuaba saludable. **La consulta SQL en `galera3` sí confirmó** `wsrep_cluster_status=Primary`, `wsrep_cluster_size=2`, `wsrep_ready=ON`, `wsrep_local_state_comment=Synced`. El log de `galera1` incluyó `WSREP: SST received` y pasos InnoDB de recuperación. **Todavía no se había comprobado el estado final `Synced` de galera1**, así que debe verificarse antes de arrancar el tercer nodo. Si galera1 queda Synced, iniciar el contenedor galera2 sin bootstrap y confirmar `wsrep_cluster_size=3` y estados Synced/healthy de todos.
+
 ## Equipo y entorno
 
 - Servidor: Ubuntu en una VM de VirtualBox; Docker Compose, proyecto `distributed-ha-lab`.
