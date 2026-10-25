@@ -284,6 +284,12 @@ El operador ejecutó `docker start` sobre el contenedor **existente** `distribut
 
 **Advertencias del arranque:** (1) varios hosts sin `contacts/contactgroups`: no suponer notificaciones externas configuradas; (2) mensajes repetidos `rsyslogd: pidfile '/run/rsyslogd.pid' and pid ... already exist`, `run failed with error -3000`: sugiere conflicto de arranque de rsyslog o PID antiguo, **sin causa confirmada**, no borrar el PID a ciegas. La observación de sólo 10 s no confirma que Nagios continúe ejecutándose ni que las comprobaciones se actualicen. Próximo paso: inspección de solo lectura de estado sostenido, procesos, archivos `status.dat`/`nagios.log` y una segunda comprobación HTTP después de unos segundos. Conservar histórico de alertas y no repetir Chaos Monkey por esta cuestión.
 
+### Nagios estable dos minutos, 24 hosts y 30 servicios registrados (25-10-2026)
+
+Tras reiniciar el contenedor **existente** de Nagios, el operador comprobó que seguía **`Up 2 minutes`**. Dentro del contenedor se vieron procesos de `/opt/nagios/bin/nagios`, trabajadores de Nagios, `runsv apache` y `/usr/sbin/apache2 -D NO_DETACH`. El archivo `/opt/nagios/var/status.dat` existe y contiene **24 bloques `hoststatus` y 30 bloques `servicestatus`**. La interfaz HTTP `http://127.0.0.1:8088/nagios/` devolvió **401**, consistente con acceso que requiere autenticación. `/api/health/deep` respondió **HTTP 200** con `{"sql":true,"mongo":true,"cache":true}`.
+
+**Alcance de esta prueba:** `status.dat` con 24/30 bloques demuestra inventario de estados **pero no que todos estén UP/OK ni que las fechas de sus últimos checks sean recientes**; eso debe auditarse aparte. Las advertencias previas sobre contactos sin definir siguen sin resolverse, por lo que no afirmar envíos de alertas por correo. Nagios estuvo detenido unas horas y no puede afirmarse que presenciara los dos Chaos Monkey reales recientes. Las advertencias de rsyslog persisten en el historial, pero no impidieron estas comprobaciones. **Monitoreo básico restaurado; punto 5 parcialmente documentado, pendiente evaluación final de estado, cobertura temporal y MTTD/MTTR.**
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
