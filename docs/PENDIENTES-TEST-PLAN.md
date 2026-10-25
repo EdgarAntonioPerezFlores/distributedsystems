@@ -12,7 +12,13 @@
 
 **Aún pendientes de los puntos 1-5:** estrés escalonado, spike, soak de horas, comparación de caché / sin caché, capacidad por capa y recursos en carga; validación funcional desde un cliente externo; failover LB/SQL/Redis/Mongo/Galera con evidencias; Chaos Monkey y fallos de red/recursos que puedan ensayarse sin poner en riesgo datos; publicación de logs sin secretos y análisis consolidado Nagios de múltiples fallos. Los planes de varias horas o con particiones de datos deben ejecutarse únicamente en condiciones controladas, no declararse hechos por existir scripts.
 
-**Siguiente ensayo sugerido (bajo riesgo):** estrés en aplicación cacheada comenzando por 25 conexiones durante 60 s, verificar salud tras cada nivel; aumentar después a 50 y 100 **solo si el nivel anterior es estable**, guardar salidas diferenciadas y observar recursos. El resultado de la carga sostenida ya fue registrado en `docs/RESULTADOS.md`; no repetirla.
+**Estrés escalonado ejecutado:** c25 (30 655 completas, p95 117 ms) y c50 (28 854 completas, p95 235 ms), ambos con 0 fallidas reportadas por ab. El objetivo p95<200 ms se rebasó en c50; se justificó detener el escalamiento antes de c100. **Siguiente prioridad:** failover controlado de un HAProxy con sonda simultánea y verificación posterior, y primer Chaos Monkey seguro sobre nodos web. El resultado de la carga sostenida ya fue registrado en `docs/RESULTADOS.md`; no repetirla.
+
+### Avance adicional: comparación de caché completada (25-10-2026 UTC)
+
+La comparación local requerida del punto 2 entre ruta cacheada y `?nocache=1` se ejecutó con ApacheBench (**5 conexiones**, 30 s por escenario). **Con caché:** 10 319 completas, 0 fallidas por ab, 343.92 req/s, p95 27 ms. **Sin caché:** 8 659 completas, 0 fallidas por ab, 288.55 req/s, p95 31 ms. El throughput con caché fue **aprox. 19.2% mayor** y la latencia media **aprox. 16.1% menor**; el health posterior de SQL/Mongo/Redis devolvió todos `true`. Evidencia en la VM: `results/cache/con-cache.txt` y `results/cache/sin-cache.txt` (no subida).
+
+El punto 2 sigue **parcial**: spike, soak de horas, capacidad por capa, CPU/RAM durante pruebas y pruebas desde cliente externo continúan pendientes. No repetir los ensayos de 30 s solo para completar la evidencia actual. El punto 3 está parcial, punto 4 sin ejecutar y punto 5 parcialmente probado con Nagios. Los datos de caché corresponden a omitir la caché mediante parámetro; no constituyen inyección de fallo de Redis.
 
 ## A. Infraestructura y archivos de entrega — listos
 
