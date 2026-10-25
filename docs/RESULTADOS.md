@@ -309,6 +309,20 @@ Ambos caminos evitaron balanceadores anteriores y `app1` evitó la caché de cat
 
 **Evidencias locales en VM:** `results/capacidad/web1-directo.txt` y `results/capacidad/app1-directo.txt`. **Pendientes del punto 2:** escenario spike exigido de 5→300→5, soak de horas y desglose de recursos durante carga, además de separación detallada de las capas restantes. Los experimentos de 300 usuarios y de varias horas deben planificarse con cuidado por las pérdidas de quórum temporales observadas en Galera.
 
+### Spike moderado 5 → 20 → 5 y salud posterior (25-10-2026 UTC)
+
+Se ejecutó un experimento preliminar de pico de concurrencia **5 → 20 → 5** contra `GET /api/products/cheapest` (ruta de catálogo con caché). Cada fase utilizó `ab -k -c <concurrencia> -t 15 -n 1000000` (límite de 15 s), con captura de `docker stats --no-stream` programada a ~3 s del inicio de cada fase. Salud inicial y final: `{"sql":true,"mongo":true,"cache":true}`, **HTTP 200 final**.
+
+| Fase | Concurrencia | Peticiones completas | Fallidas según ab | Req/s | p95 | p99 |
+|---|---:|---:|---:|---:|---:|---:|
+| 1 | 5 | **3000** | **0** | **199.74** | **59 ms** | **116 ms** |
+| 2 | 20 | **6795** | **0** | **452.79** | **93 ms** | **145 ms** |
+| 3 | 5 | **4557** | **0** | **303.74** | **28 ms** | **37 ms** |
+
+Total **14 352 peticiones completas**, **0 fallidas según ab**, con p95 menor de 200 ms en las tres fases. La diferencia de throughput entre fases 1 y 3 no prueba por sí sola un efecto causal del calentamiento de caché; puede depender de variación temporal y otras condiciones. El estado `Non-2xx responses` no se imprimió en el resumen aportado (el comando filtró la línea si existía). Para afirmar que no hubo HTTP no-2xx, revisar los informes completos.
+
+**Evidencias en VM:** `results/spike/fase1.txt`, `fase2.txt`, `fase3.txt`, más `results/spike/recursos-fase1.txt`, `recursos-fase2.txt`, `recursos-fase3.txt`. **Las métricas de CPU/RAM no se han aportado todavía**, aunque el script generó las capturas. El spike obligatorio **5→300→5** no se ejecutó y permanece pendiente; no recomendarlo a ciegas mientras Galera presente fallos temporales de comunicación. Este ensayo es evidencia parcial del apartado de rendimiento.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
