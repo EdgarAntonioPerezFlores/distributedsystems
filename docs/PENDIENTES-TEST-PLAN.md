@@ -1,4 +1,8 @@
-# Auditoría de los requisitos pendientes — TEST-PLAN puntos 1 al 5
+# Estado de validación y resultados — TEST-PLAN puntos 1 al 5
+
+Este documento registra pruebas realizadas, resultados que no alcanzaron la meta y escenarios aún no ejecutados. No modifica el alcance del enunciado docente. El resumen consolidado se encuentra en [ENTREGA.md](ENTREGA.md).
+
+**Lectura del historial:** las secciones históricas conservan estados de momentos anteriores. Un «pendiente» histórico no invalida una ejecución posterior documentada; tampoco una recuperación posterior convierte una prueba fallida en aprobada.
 
 ### Prueba spike preliminar añadida: 5→20→5
 
@@ -39,7 +43,11 @@ Tras HTTP 503 en el ensayo netem `app1`, el operador hizo **6 consultas de estad
 **Próximo enfoque seguro:** carga pico preliminar controlada con concurrencia baja a moderada y métricas de recursos, sin repetir paradas de bases de datos hasta investigar WSREP; mantener sin ejecutar escenarios de alto riesgo y documentarlos con honestidad. Ver `docs/RESULTADOS.md` para evidencias y limitaciones exactas.
 
 
-**Revisión:** 24 de octubre de 2026. **Fuente del alcance:** enunciado docente proporcionado por el equipo: *mejorar MongoDB 2.1, Redis 2.2/2.3 y todo Galera ToDo 3*; **ejecutar los puntos 1–5 de `resilience-lab/TEST-PLAN.md`**. Estos cinco puntos son **parte del encargo**, no opcionales. La presencia de scripts no equivale a haberlos ejecutado.
+## Historial de seguimiento — estados anteriores, no checklist vigente
+
+Las tablas y listas siguientes describen el avance de sesiones anteriores. Para el estado consolidado consultar [ENTREGA.md](ENTREGA.md) y los avances superiores. Esto incluye referencias antiguas al espacio de disco, pruebas posteriormente realizadas y datos académicos ya registrados.
+
+**Revisión histórica:** 24 de octubre de 2026. **Fuente del alcance:** enunciado docente proporcionado por el equipo: *mejorar MongoDB 2.1, Redis 2.2/2.3 y todo Galera ToDo 3*; **ejecutar los puntos 1–5 de `resilience-lab/TEST-PLAN.md`**. Estos cinco puntos son **parte del encargo**, no opcionales. La presencia de scripts no equivale a haberlos ejecutado.
 
 ## Estado actualizado al 25 de octubre de 2026: recuperación y carga sostenida
 
