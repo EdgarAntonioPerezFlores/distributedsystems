@@ -90,6 +90,25 @@ Se reiniciaron **solo** `app1`, `app2` y `app3`, que posteriormente aparecieron 
 
 **Comparación contra nivel c25:** c25 = 510.86 req/s, p95=117 ms, 0 fallidas en 60.007 s; c50 = 480.79 req/s, p95=235 ms, 0 fallidas en 60.014 s. **El objetivo indicativo p95<200 ms ya no se cumple en c50**, aunque no se registraron errores AB. Por esta razón, **se recomienda parar aquí el escalamiento antes de intentar c100** hasta medir consumo CPU/RAM y revisar códigos HTTP y trazas; no afirmar que 50 es el límite físico del sistema ni que existe 0% de errores HTTP por petición. El objetivo de estrés escalonado está parcialmente cubierto; c100 permanece sin ejecutar y su omisión se justifica por la superación del umbral de latencia.
 
+### Comparación del catálogo con y sin caché Redis (25-10-2026 UTC)
+
+**Ensayo ejecutado localmente en Ubuntu:** dos pruebas ApacheBench secuenciales, de 30 s y concurrencia 5 en la misma ruta, diferenciadas por `?nocache=1`. Archivos de evidencia en la VM: `results/cache/con-cache.txt` y `results/cache/sin-cache.txt`.
+
+| Métrica | Con caché (`/api/products/cheapest`) | Sin caché (`/api/products/cheapest?nocache=1`) |
+|---|---:|---:|
+| Duración | 30.004 s | 30.008 s |
+| Concurrencia | 5 | 5 |
+| Solicitudes completas | **10 319** | **8 659** |
+| Solicitudes fallidas reportadas por ApacheBench | **0** | **0** |
+| Throughput | **343.92 req/s** | **288.55 req/s** |
+| Tiempo medio por solicitud | **14.538 ms** | **17.328 ms** |
+| p50 / p95 / p99 | **13 / 27 / 40 ms** | **15 / 31 / 47 ms** |
+| Máximo | 151 ms | 130 ms |
+
+**Interpretación comparativa:** el escenario con Redis alcanzó **aproximadamente 19.2% más throughput** frente al escenario que evita la caché (`343.92/288.55 - 1`), con **aproximadamente 16.1% menos latencia media** (`1 - 14.538/17.328`), y p95 de 27 ms frente a 31 ms. **Comprobación posterior:** `/api/health/deep` devolvió `{"sql":true,"mongo":true,"cache":true}`.
+
+**Limitaciones:** los dos ensayos se ejecutaron secuencialmente, una sola corrida por opción, desde la misma VM; la salida de ab indica cero peticiones fallidas pero no permite auditar individualmente todos los códigos de respuesta. El escenario `?nocache=1` evita el uso de la caché del catálogo sin detener el servicio Redis, por lo que las conclusiones se refieren a esta ruta y condiciones, no a una caída real de Redis. No se midieron CPU/RAM ni variabilidad entre repeticiones.
+
 **Nota de lectura:** las secciones con salidas antiguas de Nagios detenido, IP `192.168.1.88` y pruebas pendientes narran estados **históricos** de la campaña. Para conocer el estado más reciente, consultar este encabezado, la [galería de Nagios](evidencias/README.md) y el [resumen de entrega](ENTREGA.md). La IP LAN posterior observada fue `192.168.100.29`.
 
 ### Estado actual del laboratorio y capacidad de disco (24-10-2026)
