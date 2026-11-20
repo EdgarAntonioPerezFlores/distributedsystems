@@ -5,7 +5,7 @@ resources:
 images:
 - name: catalog-api
   newName: ghcr.io/edgarantonioperezflores/distributedsystems-api
-  newTag: sha-dd2ea94c21ea53a8c91bbfab8498e50745d66728
+  newTag: sha-826bc2aaf398598bd92c8d23f754275a9e4f6a95
 - name: catalog-web
   newName: ghcr.io/edgarantonioperezflores/distributedsystems-web
-  newTag: sha-dd2ea94c21ea53a8c91bbfab8498e50745d66728
+  newTag: sha-826bc2aaf398598bd92c8d23f754275a9e4f6a95
