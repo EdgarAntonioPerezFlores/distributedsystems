@@ -29,12 +29,15 @@ jobs:
           k3d image import "$image" --cluster parcial
           echo "$image" > evidencia/imagen.txt
           # Sólo se consulta la página estática. Nginx resuelve el nombre api al arrancar.
+          kubectl create namespace observability
+          kubectl -n observability create service clusterip otel --tcp=4317:4317
           kubectl create service clusterip api --tcp=8080:8080
           kubectl kustomize deploy/overlays/dev | python3 -c 'import sys,yaml; docs=[d for d in yaml.safe_load_all(sys.stdin) if d["kind"]=="Deployment" and d["metadata"]["name"]=="web"]; assert len(docs)==1; d=docs[0];d["metadata"]["namespace"]="default";print(yaml.safe_dump(d))' | kubectl apply -f -
           kubectl create service nodeport web --tcp=8080:8080 --node-port=30080
           kubectl rollout status deploy/web --timeout=240s
           kubectl get pods -o wide > evidencia/pods.txt
-          curl -fsS --retry-all-errors --retry 8 --retry-delay 1 http://127.0.0.1:18080/ | grep -q 'API explorer'
+          curl -fsS --retry-all-errors --retry 8 --retry-delay 1 http://127.0.0.1:18080/ > evidencia/index.html
+          grep -q 'API explorer' evidencia/index.html
       - name: Medir GET / (30 segundos, c20)
         run: |
           url=http://127.0.0.1:18080/
@@ -48,7 +51,7 @@ jobs:
           cat evidencia/ab.txt >> "$GITHUB_STEP_SUMMARY"
           grep -Eq '^Failed requests: +0$' evidencia/ab.txt
           ! grep -Eq '^Non-2xx responses: +[1-9]' evidencia/ab.txt
-          awk -F, '($1!="200" || $2!=1770){bad=1} END{exit (NR!=100 || bad)}' evidencia/sonda.csv
+          awk -F, -v expected="$(wc -c < evidencia/index.html)" '($1!="200" || $2!=expected){bad=1} END{exit (NR!=100 || bad)}' evidencia/sonda.csv
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: medicion-presentacion-k3s, path: evidencia/, retention-days: 30}

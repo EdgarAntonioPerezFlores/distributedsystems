@@ -5,7 +5,7 @@ resources:
 images:
 - name: catalog-api
   newName: ghcr.io/edgarantonioperezflores/distributedsystems-api
-  newTag: candidate
+  newTag: candidate # {"$imagepolicy": "flux-system:catalog-api:tag"}
 - name: catalog-web
   newName: ghcr.io/edgarantonioperezflores/distributedsystems-web
-  newTag: candidate
+  newTag: candidate # {"$imagepolicy": "flux-system:catalog-web:tag"}

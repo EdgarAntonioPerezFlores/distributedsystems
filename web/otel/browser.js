@@ -1,0 +1,10 @@
+import {WebTracerProvider} from '@opentelemetry/sdk-trace-web';
+import {BatchSpanProcessor} from '@opentelemetry/sdk-trace-base';
+import {OTLPTraceExporter} from '@opentelemetry/exporter-trace-otlp-http';
+import {FetchInstrumentation} from '@opentelemetry/instrumentation-fetch';
+import {registerInstrumentations} from '@opentelemetry/instrumentation';
+import {resourceFromAttributes} from '@opentelemetry/resources';
+const exporter=new OTLPTraceExporter({url:location.origin+'/telemetry/v1/traces'});
+const provider=new WebTracerProvider({resource:resourceFromAttributes({'service.name':'catalog-browser'}),spanProcessors:[new BatchSpanProcessor(exporter)]});
+provider.register();
+registerInstrumentations({tracerProvider:provider,instrumentations:[new FetchInstrumentation({ignoreUrls:[/\/telemetry\//],propagateTraceHeaderCorsUrls:[location.origin]})]});

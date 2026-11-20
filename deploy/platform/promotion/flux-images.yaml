@@ -1,0 +1,36 @@
+# Optional release-tag discovery: creates a promotion candidate branch, never writes to release.
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata: {name: catalog-api, namespace: flux-system}
+spec: {interval: 5m, image: ghcr.io/edgarantonioperezflores/distributedsystems-api}
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata: {name: catalog-web, namespace: flux-system}
+spec: {interval: 5m, image: ghcr.io/edgarantonioperezflores/distributedsystems-web}
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata: {name: catalog-api, namespace: flux-system}
+spec:
+  imageRepositoryRef: {name: catalog-api}
+  policy: {semver: {range: '>=1.0.0'}}
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata: {name: catalog-web, namespace: flux-system}
+spec:
+  imageRepositoryRef: {name: catalog-web}
+  policy: {semver: {range: '>=1.0.0'}}
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageUpdateAutomation
+metadata: {name: catalog-promotion, namespace: flux-system}
+spec:
+  interval: 10m
+  sourceRef: {kind: GitRepository, name: flux-system}
+  git:
+    checkout: {ref: {branch: release}}
+    commit: {author: {name: flux, email: flux@localhost}, messageTemplate: 'Proponer imágenes de catálogo para producción'}
+    push: {branch: catalog-promotion}
+  update: {path: ./deploy/overlays/prod, strategy: Setters}

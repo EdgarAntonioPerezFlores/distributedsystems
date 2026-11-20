@@ -1,0 +1,40 @@
+Fuente: https://github.com/EdgarAntonioPerezFlores/distributedsystems/actions/runs/44680646138
+Imagen web: sha-dd2ea94c21ea53a8c91bbfab8498e50745d66728
+Alcance: GET / estático en tres servidores K3s sobre un runner. Se usó NodePort de un nodo y keep-alive. La sonda independiente obtuvo 100 respuestas HTTP 200 de 1770 bytes.
+
+Server Software:        nginx/1.28.2
+Server Hostname:        127.0.0.1
+Server Port:            18080
+
+Document Path:          /
+Document Length:        1770 bytes
+
+Concurrency Level:      20
+Time taken for tests:   30.000 seconds
+Complete requests:      663638
+Failed requests:        0
+Keep-Alive requests:    662983
+Total transferred:      1355145793 bytes
+HTML transferred:       1174639260 bytes
+Requests per second:    22121.24 [#/sec] (mean)
+Time per request:       0.904 [ms] (mean)
+Time per request:       0.045 [ms] (mean, across all concurrent requests)
+Transfer rate:          44112.76 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.0      0       1
+Processing:     0    1   0.7      1     100
+Waiting:        0    1   0.7      1     100
+Total:          0    1   0.7      1     100
+
+Percentage of the requests served within a certain time (ms)
+  50%      1
+  66%      1
+  75%      1
+  80%      1
+  90%      2
+  95%      2
+  98%      2
+  99%      3
+ 100%    100 (longest request)

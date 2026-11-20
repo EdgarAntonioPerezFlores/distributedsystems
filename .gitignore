@@ -34,3 +34,4 @@ node_modules/
 *.tfvars
 *.tfplan
 kubeconfig*
+web/otel/dist/
