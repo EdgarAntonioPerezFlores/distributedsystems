@@ -1,0 +1,29 @@
+name: Platform CI
+on: [pull_request, workflow_dispatch]
+permissions: {contents: read}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm ci --ignore-scripts && node --check index.js && node --test ../tests/events.test.mjs
+        working-directory: application
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check -recursive && terraform init -backend=false && terraform validate
+        working-directory: infra/terraform
+      - uses: terraform-linters/setup-tflint@v4
+      - run: tflint --recursive --chdir=infra/terraform
+      - uses: bridgecrewio/checkov-action@v12
+        with: {directory: infra/terraform, framework: terraform}
+      - run: |
+          for env in dev prod; do
+            kubectl kustomize deploy/overlays/$env > /tmp/$env.yaml
+            docker run --rm -i ghcr.io/yannh/kubeconform:v0.6.7 -strict -summary < /tmp/$env.yaml
+          done
+      - run: docker build -t catalog-api -f application/Dockerfile.k3s . && docker build -t catalog-web -f web/Dockerfile.k3s .
+      - uses: aquasecurity/trivy-action@0.28.0
+        with: {image-ref: catalog-api, severity: 'HIGH,CRITICAL', exit-code: '1', ignore-unfixed: true}
+      - uses: aquasecurity/trivy-action@0.28.0
+        with: {image-ref: catalog-web, severity: 'HIGH,CRITICAL', exit-code: '1', ignore-unfixed: true}

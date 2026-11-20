@@ -1,7 +1,7 @@
 import Redis from 'ioredis';
 import {required} from './db.js';
 export function createCache() {
- const client=new Redis({name:'cachemaster',role:'master',
+ const client=new Redis({name:process.env.REDIS_MASTER_NAME || 'cachemaster',role:'master',
   sentinels:required('REDIS_SENTINELS').split(',').map(s=>{const [host,port]=s.split(':');return {host,port:Number(port)};}),
   password:required('REDIS_PASSWORD'),sentinelPassword:required('REDIS_PASSWORD'),
   enableOfflineQueue:false,maxRetriesPerRequest:1,connectTimeout:1000,commandTimeout:800,

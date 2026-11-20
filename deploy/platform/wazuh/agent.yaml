@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata: {name: wazuh-agent, namespace: wazuh}
+spec:
+  selector: {matchLabels: {app: wazuh-agent}}
+  template:
+    metadata: {labels: {app: wazuh-agent}}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - name: agent
+        image: ghcr.io/edgarantonioperezflores/distributedsystems-wazuh-agent:lab
+        env:
+        - {name: NODE_NAME, valueFrom: {fieldRef: {fieldPath: spec.nodeName}}}
+        volumeMounts:
+        - {name: audit, mountPath: /host/audit, readOnly: true}
+        - {name: config, mountPath: /host/config/audit.yaml, readOnly: true}
+        - {name: enroll, mountPath: /enroll, readOnly: true}
+        resources: {requests: {cpu: 50m, memory: 96Mi}, limits: {cpu: 500m, memory: 256Mi}}
+      volumes:
+      - {name: audit, hostPath: {path: /var/lib/rancher/k3s/server/logs, type: Directory}}
+      - {name: config, hostPath: {path: /etc/rancher/k3s/audit.yaml, type: File}}
+      - {name: enroll, secret: {secretName: wazuh-authd-pass}}

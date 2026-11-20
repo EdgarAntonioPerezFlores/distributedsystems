@@ -1,0 +1,7 @@
+servers = ["192.168.56.101","192.168.56.102","192.168.56.103"]
+ssh_user = "alumno"
+kubeconfig = "~/.kube/catalog-dev"
+git_url = "ssh://git@github.com/EdgarAntonioPerezFlores/distributedsystems.git"
+git_branch = "migracion-k3s"
+git_key_file = "~/.ssh/catalog-deploy"
+environment = "dev"

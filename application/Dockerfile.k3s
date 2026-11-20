@@ -1,0 +1,10 @@
+FROM node:22-alpine
+WORKDIR /app
+COPY application/package*.json ./
+RUN npm ci --omit=dev --ignore-scripts
+COPY application/*.js application/*.cjs ./
+COPY database/catalog.sql ./database/catalog.sql
+COPY worker/index.js ./worker.js
+USER 1000:1000
+EXPOSE 8080
+CMD ["node","index.js"]

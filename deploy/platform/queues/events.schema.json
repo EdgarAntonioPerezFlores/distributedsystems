@@ -1,0 +1,8 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"catalog.events: payload según routing key",
+  "oneOf":[
+    {"title":"reviews.created (messageId obligatorio)","type":"object","required":["sku","reviewer","comment","rating","createdAt"],"properties":{"sku":{"type":"string","pattern":"^[A-Za-z0-9-]+$"},"reviewer":{"type":"string","minLength":1,"maxLength":80},"comment":{"type":"string","minLength":1,"maxLength":1000},"rating":{"type":"integer","minimum":1,"maximum":5},"createdAt":{"type":"string","format":"date-time"}},"additionalProperties":false},
+    {"title":"catalog.changed y catalog.refresh","type":"object","required":["key"],"properties":{"key":{"const":"store:products:cheapest"}},"additionalProperties":false}
+  ]
+}

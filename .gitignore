@@ -29,3 +29,8 @@ __pycache__/
 node_modules/
 *.pyc
 .recovery.*.yml
+.terraform/
+*.tfstate*
+*.tfvars
+*.tfplan
+kubeconfig*

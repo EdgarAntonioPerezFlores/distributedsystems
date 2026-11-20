@@ -1,0 +1,58 @@
+name: Publish lab images
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, migracion-k3s]
+    paths: ['application/**','worker/**','web/**','database/**','.github/workflows/release.yml']
+    tags: ['v*']
+permissions: {contents: read, packages: write, id-token: write}
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    strategy: {matrix: {component: [api, web]}}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with: {registry: ghcr.io, username: '${{ github.actor }}', password: '${{ secrets.GITHUB_TOKEN }}'}
+      - uses: sigstore/cosign-installer@v3
+      - id: names
+        env: {COMPONENT: '${{ matrix.component }}'}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}-$COMPONENT"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          dir=application; [[ "$COMPONENT" != web ]] || dir=web
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: '${{ steps.names.outputs.image }}'
+          tags: |
+            type=sha,format=long
+            type=semver,pattern={{version}}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: '${{ steps.names.outputs.dir }}/Dockerfile.k3s'
+          tags: '${{ steps.meta.outputs.tags }}'
+          push: true
+          sbom: true
+          provenance: true
+      - run: cosign sign --yes "$IMAGE@$DIGEST"
+        env: {IMAGE: '${{ steps.names.outputs.image }}', DIGEST: '${{ steps.build.outputs.digest }}'}
+  gitops:
+    needs: publish
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    permissions: {contents: write}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ github.ref_name }}'}
+      - run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          sed -i "s/newTag: .*/newTag: sha-$GITHUB_SHA/" deploy/overlays/dev/kustomization.yaml
+          git config user.name github-actions
+          git config user.email actions@users.noreply.github.com
+          git add deploy/overlays/dev
+          git diff --cached --quiet || { git commit -m "Deploy images sha-$GITHUB_SHA to dev"; git push; }

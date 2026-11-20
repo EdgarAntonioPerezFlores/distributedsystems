@@ -1,0 +1,204 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-config
+  namespace: observability
+data:
+  gateway.yaml: "exporters:\n  otlp:\n    endpoint: lgtm:4317\n    tls:\n      insecure:\
+    \ true\nextensions:\n  health_check:\n    endpoint: 0.0.0.0:13133\nprocessors:\n\
+    \  batch: {}\n  k8sattributes:\n    auth_type: serviceAccount\nreceivers:\n  filelog:\n\
+    \    include:\n    - /var/log/pods/catalog_*/*/*.log\n    include_file_path: true\n\
+    \    operators:\n    - type: container\n    start_at: end\n  otlp:\n    protocols:\n\
+    \      grpc:\n        endpoint: 0.0.0.0:4317\n      http:\n        endpoint: 0.0.0.0:4318\n\
+    service:\n  extensions:\n  - health_check\n  pipelines:\n    logs:\n      exporters:\n\
+    \      - otlp\n      processors:\n      - k8sattributes\n      - batch\n     \
+    \ receivers:\n      - otlp\n    metrics:\n      exporters:\n      - otlp\n   \
+    \   processors:\n      - k8sattributes\n      - batch\n      receivers:\n    \
+    \  - otlp\n    traces:\n      exporters:\n      - otlp\n      processors:\n  \
+    \    - k8sattributes\n      - batch\n      receivers:\n      - otlp\n"
+  agent.yaml: "exporters:\n  otlp:\n    endpoint: otel:4317\n    tls:\n      insecure:\
+    \ true\nextensions:\n  health_check:\n    endpoint: 0.0.0.0:13133\nprocessors:\n\
+    \  batch: {}\n  k8sattributes:\n    auth_type: serviceAccount\nreceivers:\n  filelog:\n\
+    \    include:\n    - /var/log/pods/catalog_*/*/*.log\n    include_file_path: true\n\
+    \    operators:\n    - type: container\n    start_at: end\n  otlp:\n    protocols:\n\
+    \      grpc:\n        endpoint: 0.0.0.0:4317\n      http:\n        endpoint: 0.0.0.0:4318\n\
+    service:\n  pipelines:\n    logs:\n      exporters:\n      - otlp\n      processors:\n\
+    \      - batch\n      receivers:\n      - filelog\n"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otel
+  namespace: observability
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: catalog-otel
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - pods
+  - namespaces
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - replicasets
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: catalog-otel
+subjects:
+- kind: ServiceAccount
+  name: otel
+  namespace: observability
+roleRef:
+  kind: ClusterRole
+  name: catalog-otel
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel
+  namespace: observability
+spec:
+  selector:
+    matchLabels: &id001
+      app: otel
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      containers:
+      - name: otel
+        image: otel/opentelemetry-collector-contrib:0.128.0
+        resources:
+          requests:
+            memory: 128Mi
+            cpu: 50m
+          limits:
+            memory: 512Mi
+            cpu: '2'
+        args:
+        - --config=/conf/gateway.yaml
+        volumeMounts:
+        - name: cfg
+          mountPath: /conf
+      serviceAccountName: otel
+      volumes:
+      - name: cfg
+        configMap:
+          name: otel-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel
+  namespace: observability
+spec:
+  selector:
+    app: otel
+  ports:
+  - name: p4317
+    port: 4317
+  - name: p4318
+    port: 4318
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: otel-agent
+  namespace: observability
+spec:
+  selector:
+    matchLabels: &id001
+      app: otel-agent
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      containers:
+      - name: otel-agent
+        image: otel/opentelemetry-collector-contrib:0.128.0
+        resources:
+          requests:
+            memory: 128Mi
+            cpu: 50m
+          limits:
+            memory: 512Mi
+            cpu: '2'
+        args:
+        - --config=/conf/agent.yaml
+        volumeMounts:
+        - name: cfg
+          mountPath: /conf
+        - name: logs
+          mountPath: /var/log/pods
+          readOnly: true
+        securityContext:
+          runAsUser: 0
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+      serviceAccountName: otel
+      volumes:
+      - name: cfg
+        configMap:
+          name: otel-config
+      - name: logs
+        hostPath:
+          path: /var/log/pods
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lgtm
+  namespace: observability
+spec:
+  selector:
+    matchLabels: &id001
+      app: lgtm
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      containers:
+      - name: lgtm
+        image: grafana/otel-lgtm:0.11.4
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 50m
+          limits:
+            memory: 3Gi
+            cpu: '2'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lgtm
+  namespace: observability
+spec:
+  selector:
+    app: lgtm
+  ports:
+  - name: p3000
+    port: 3000
+  - name: p4317
+    port: 4317

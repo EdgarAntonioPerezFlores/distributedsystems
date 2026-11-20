@@ -2,6 +2,10 @@ import { createServer } from "node:http";
 import { MongoClient } from "mongodb";
 import {required, createDbPool, mongoUri, mongoOptions} from './db.js';
 import {createCache} from './cache.js';
+import {randomUUID} from 'node:crypto';
+const broker=process.env.AMQP_URL ? await import('./events.js') : null;
+const bus=broker ? await broker.connectBroker() : null;
+const publish=(topic,body,id=randomUUID())=>broker.confirmed(bus.ch,'catalog.events',topic,Buffer.from(JSON.stringify(body)),{messageId:id});
 const pool=createDbPool();
 const mongo=new MongoClient(mongoUri(),mongoOptions());
 const redis=createCache();
@@ -60,7 +64,8 @@ const start = async () => {
         const [rows]=await pool.query('SELECT @@hostname AS node, @@max_connections AS maxConnections, NOW() AS time');
         sendJson(response,200,rows,trace); return;
       }
-      if (pathname === '/health/deep' && request.method === 'GET') {
+      if(pathname==='/healthz') return sendJson(response,200,{alive:true});
+      if (pathname === '/readyz' || pathname === '/health/deep' && request.method === 'GET') {
         await Promise.all([pool.query('SELECT 1'),mongo.db().command({ping:1})]);
         sendJson(response,redis.ready()?200:503,{sql:true,mongo:true,cache:redis.ready()},trace); return;
       }
@@ -90,6 +95,15 @@ const start = async () => {
           return;
         }
         trace[trace.length - 1] = bypass ? "cache bypass" : (redis.ready() ? "redis (cache miss)" : "redis unavailable; SQL fallback");
+        if(bus && !bypass && redis.ready()) {
+          await publish('catalog.refresh',{key:productsCacheKey});
+          for(let n=0;n<8;n++){
+            await new Promise(r=>setTimeout(r,50));
+            const warm=await redis.get(productsCacheKey);
+            if(warm) return sendJson(response,200,JSON.parse(warm),trace);
+          }
+          return sendJson(response,503,{error:'Catalog warming; retry shortly'},trace);
+        }
         trace.push("galera-via-proxy");
         const [products] = await pool.execute(
           "SELECT id, sku, name, description, price FROM products ORDER BY price ASC, id ASC LIMIT 10",
@@ -103,6 +117,7 @@ const start = async () => {
       }
 
       if (request.method === "POST" && pathname === "/cache/clear") {
+        if(bus) { await publish('catalog.changed',{key:productsCacheKey}); return sendJson(response,202,{accepted:true},trace); }
         const removed = await redis.del(productsCacheKey);
         sendJson(
           response,
@@ -161,6 +176,12 @@ const start = async () => {
           comment,
           createdAt: new Date(),
         };
+        if(bus) {
+          const id=request.headers['idempotency-key'] || randomUUID();
+          if(typeof id!=='string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(id)) throw new HttpError(400,'Invalid Idempotency-Key');
+          await publish('reviews.created',review,review.sku+':'+id);
+          return sendJson(response,202,{id,accepted:true},trace);
+        }
         const result = await reviews.insertOne(review);
         sendJson(response, 201, { id: result.insertedId.toString(), ...review }, [...trace, "mongodb (insert review)"]);
         return;

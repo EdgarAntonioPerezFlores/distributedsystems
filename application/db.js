@@ -2,7 +2,7 @@ import mysql from 'mysql2/promise';
 export const required=(name)=>{if(!process.env[name]) throw new Error(`Missing ${name}`); return process.env[name];};
 export const dbHosts=(process.env.DB_HOSTS || required('DB_HOST')).split(',');
 export const mysqlOptions=(host)=>({host,port:Number(process.env.DB_PORT||3306),database:required('DB_NAME'),user:required('DB_USER'),password:required('DB_PASSWORD'),connectTimeout:2000});
-export const mongoUri=()=>`mongodb://${required('MONGO_HOSTS')}/${encodeURIComponent(required('MONGO_DB'))}?replicaSet=rs0&retryWrites=true&w=majority&wtimeoutMS=5000`;
+export const mongoUri=()=>`mongodb://${required('MONGO_HOSTS')}/${encodeURIComponent(required('MONGO_DB'))}?replicaSet=${encodeURIComponent(process.env.MONGO_REPLICA_SET || "rs0")}&retryWrites=true&w=majority&wtimeoutMS=5000`;
 export const mongoOptions=()=>({auth:{username:required('MONGO_USER'),password:required('MONGO_PASSWORD')},authSource:required('MONGO_AUTH_SOURCE'),serverSelectionTimeoutMS:5000,connectTimeoutMS:2000,socketTimeoutMS:8000,maxPoolSize:10});
 export function createDbPool() {
  const pools=dbHosts.map(host=>mysql.createPool({...mysqlOptions(host),waitForConnections:true,connectionLimit:Number(process.env.DB_POOL_LIMIT||5),queueLimit:50,enableKeepAlive:true}));

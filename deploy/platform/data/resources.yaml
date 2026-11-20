@@ -1,0 +1,120 @@
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: MariaDB
+metadata:
+  name: galera
+  namespace: catalog
+spec:
+  replicas: 3
+  rootPasswordSecretKeyRef:
+    name: catalog-auth
+    key: DB_ROOT_PASSWORD
+  username: catalog
+  passwordSecretKeyRef:
+    name: catalog-auth
+    key: DB_PASSWORD
+  database: catalog
+  storage:
+    size: 4Gi
+  galera:
+    enabled: true
+  affinity:
+    antiAffinityEnabled: true
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: MaxScale
+metadata:
+  name: sql-proxy
+  namespace: catalog
+spec:
+  replicas: 2
+  mariaDbRef:
+    name: galera
+  services:
+  - name: rw
+    router: readwritesplit
+    listener:
+      port: 3306
+  monitor:
+    interval: 2s
+    cooperativeMonitoring: majority_of_all
+  auth:
+    generate: true
+---
+apiVersion: mongodbcommunity.mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: reviews
+  namespace: catalog
+spec:
+  members: 3
+  type: ReplicaSet
+  version: 7.0.18
+  security:
+    authentication:
+      modes:
+      - SCRAM
+  users:
+  - name: catalog
+    db: admin
+    passwordSecretRef:
+      name: catalog-auth
+      key: MONGO_PASSWORD
+    roles:
+    - name: readWrite
+      db: catalog
+    scramCredentialsSecretName: catalog-scram
+  statefulSet:
+    spec:
+      template:
+        spec:
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    app: reviews-svc
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cache
+  namespace: flux-system
+spec:
+  interval: 30m
+  timeout: 15m
+  targetNamespace: catalog
+  releaseName: cache
+  install:
+    createNamespace: true
+    crds: CreateReplace
+  upgrade:
+    crds: CreateReplace
+  chart:
+    spec:
+      chart: redis
+      version: 20.13.4
+      sourceRef:
+        kind: HelmRepository
+        name: bitnami
+  values:
+    global:
+      security:
+        allowInsecureImages: true
+    image:
+      repository: bitnamilegacy/redis
+    architecture: replication
+    replica:
+      replicaCount: 3
+      podAntiAffinityPreset: hard
+      persistence:
+        size: 2Gi
+    auth:
+      enabled: true
+      existingSecret: catalog-auth
+      existingSecretPasswordKey: REDIS_PASSWORD
+    sentinel:
+      enabled: true
+      masterSet: cachemaster
+      image:
+        repository: bitnamilegacy/redis-sentinel

@@ -1,3 +1,9 @@
+# Parcial 3: migración a K3s
+
+[Implementación, instalación y resultados](docs/MIGRACION-K3S.md) · [Plan del profesor](PLATFORM-MIGRATION-PLAN.md) · [Versión del segundo parcial](https://github.com/EdgarAntonioPerezFlores/distributedsystems/tree/segundo-parcial).
+
+La siguiente documentación corresponde al sistema Compose que sirve de referencia.
+
 # Sistema distribuido de tres capas — laboratorio VirtualBox
 
 **Universidad:** Universidad del Caribe  
