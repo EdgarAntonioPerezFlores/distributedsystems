@@ -48,9 +48,13 @@ jobs:
     permissions: {contents: write}
     steps:
       - uses: actions/checkout@v4
-        with: {ref: '${{ github.ref_name }}'}
+        with: {ref: '${{ github.ref_name }}', fetch-depth: 0}
       - run: |
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git merge-base --is-ancestor "$GITHUB_SHA" HEAD
+          if ! git diff --quiet "$GITHUB_SHA" HEAD -- application worker web database .github/workflows/release.yml; then
+            echo 'Existe una revisión posterior que debe publicar sus propias imágenes.'
+            exit 0
+          fi
           sed -i "s/newTag: .*/newTag: sha-$GITHUB_SHA/" deploy/overlays/dev/kustomization.yaml
           git config user.name github-actions
           git config user.email actions@users.noreply.github.com

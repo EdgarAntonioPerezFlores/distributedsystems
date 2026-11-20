@@ -1,0 +1,45 @@
+name: Terraform del laboratorio
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        type: choice
+        options: [plan, apply]
+        required: true
+      pr_number:
+        description: 'Número de PR para publicar sólo el resumen de plan (opcional)'
+        required: false
+permissions: {contents: read, pull-requests: write, id-token: write}
+concurrency: {group: catalog-terraform, cancel-in-progress: false}
+jobs:
+  operate:
+    # Never execute PR code on the admin machine. Protected GitHub Environment
+    # must require a reviewer for apply. This workflow is for an existing cluster.
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, catalog-admin]
+    environment: '${{ inputs.action == ''apply'' && ''catalog-apply'' || ''catalog-plan'' }}'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - uses: aws-actions/configure-aws-credentials@v4
+        with: {role-to-assume: '${{ vars.STATE_ROLE_ARN }}', aws-region: '${{ vars.AWS_REGION }}'}
+      - name: Plan reproducible con estado bloqueado
+        working-directory: infra/terraform
+        env:
+          BUCKET: '${{ vars.STATE_BUCKET }}'
+          REGION: '${{ vars.AWS_REGION }}'
+        run: |
+          terraform init -input=false -backend-config="bucket=$BUCKET" -backend-config="region=$REGION" -backend-config="key=catalog/terraform.tfstate" -backend-config="use_lockfile=true"
+          terraform workspace select prod
+          terraform plan -input=false -var-file=/etc/catalog/prod.tfvars -out="$RUNNER_TEMP/catalog.tfplan"
+      - if: inputs.pr_number != '' && inputs.action == 'plan'
+        env: {GH_TOKEN: '${{ github.token }}', PR: '${{ inputs.pr_number }}'}
+        run: |
+          [[ "$PR" =~ ^[0-9]+$ ]]
+          printf 'Plan del estado de main finalizado. Revisión: %s. Ejecución: %s/%s/actions/runs/%s\n' "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > "$RUNNER_TEMP/catalog-comment"
+          gh pr comment "$PR" --body-file "$RUNNER_TEMP/catalog-comment"
+      - if: inputs.action == 'apply'
+        working-directory: infra/terraform
+        run: terraform apply -input=false "$RUNNER_TEMP/catalog.tfplan"
+      - if: always()
+        run: rm -f "$RUNNER_TEMP/catalog.tfplan" "$RUNNER_TEMP/catalog-comment"

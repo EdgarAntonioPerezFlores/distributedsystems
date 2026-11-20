@@ -1,0 +1,16 @@
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Provider
+metadata: {name: catalog-status, namespace: flux-system}
+spec:
+  type: github
+  address: https://github.com/EdgarAntonioPerezFlores/distributedsystems
+  secretRef: {name: catalog-github-status}
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata: {name: catalog-status, namespace: flux-system}
+spec:
+  providerRef: {name: catalog-status}
+  eventSeverity: info
+  eventSources:
+  - {kind: Kustomization, name: apps}

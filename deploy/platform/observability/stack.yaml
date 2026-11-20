@@ -207,6 +207,10 @@ spec:
           subPath: catalog.json
           mountPath: /etc/catalog-dashboards/catalog.json
           readOnly: true
+        - name: provisioning
+          mountPath: /otel-lgtm/grafana/conf/provisioning/alerting/catalog.yaml
+          subPath: alerts.yaml
+          readOnly: true
       volumes:
       - name: provisioning
         configMap:
@@ -330,3 +334,44 @@ data:
     "Scrape del broker", "type": "timeseries", "datasource": {"type": "prometheus",
     "uid": "catalog-mimir"}, "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8}, "targets":
     [{"refId": "A", "expr": "up{job=\"rabbitmq\"}"}]}]}'
+  alerts.yaml: "apiVersion: 1\ngroups:\n- orgId: 1\n  name: Catalog\n  folder: Catalog\n\
+    \  interval: 1m\n  rules:\n  - uid: catalog-1\n    title: Cola pendiente\n   \
+    \ condition: C\n    for: 5m\n    noDataState: NoData\n    execErrState: Error\n\
+    \    labels:\n      service: rabbitmq\n    annotations:\n      summary: Cola pendiente;\
+    \ revisar consumer, MongoDB y DLQ.\n    data:\n    - refId: A\n      relativeTimeRange:\n\
+    \        from: 600\n        to: 0\n      datasourceUid: catalog-mimir\n      model:\n\
+    \        refId: A\n        expr: sum(rabbitmq_queue_messages_ready{queue=\"reviews.created\"\
+    })\n        instant: true\n        intervalMs: 1000\n        maxDataPoints: 43200\n\
+    \    - refId: C\n      datasourceUid: __expr__\n      relativeTimeRange:\n   \
+    \     from: 0\n        to: 0\n      model:\n        refId: C\n        type: threshold\n\
+    \        expression: A\n        conditions:\n        - type: query\n         \
+    \ evaluator:\n            type: gt\n            params:\n            - 100\n \
+    \         operator:\n            type: and\n          reducer:\n            type:\
+    \ last\n            params: []\n          query:\n            params:\n      \
+    \      - C\n  - uid: catalog-2\n    title: \"Rese\\xF1as sin ACK\"\n    condition:\
+    \ C\n    for: 10m\n    noDataState: NoData\n    execErrState: Error\n    labels:\n\
+    \      service: rabbitmq\n    annotations:\n      summary: \"Rese\\xF1as sin ACK;\
+    \ revisar consumer, MongoDB y DLQ.\"\n    data:\n    - refId: A\n      relativeTimeRange:\n\
+    \        from: 600\n        to: 0\n      datasourceUid: catalog-mimir\n      model:\n\
+    \        refId: A\n        expr: sum(rabbitmq_queue_messages_unacked{queue=\"\
+    reviews.created\"})\n        instant: true\n        intervalMs: 1000\n       \
+    \ maxDataPoints: 43200\n    - refId: C\n      datasourceUid: __expr__\n      relativeTimeRange:\n\
+    \        from: 0\n        to: 0\n      model:\n        refId: C\n        type:\
+    \ threshold\n        expression: A\n        conditions:\n        - type: query\n\
+    \          evaluator:\n            type: gt\n            params:\n           \
+    \ - 0\n          operator:\n            type: and\n          reducer:\n      \
+    \      type: last\n            params: []\n          query:\n            params:\n\
+    \            - C\n  - uid: catalog-3\n    title: Mensajes en DLQ\n    condition:\
+    \ C\n    for: 1m\n    noDataState: NoData\n    execErrState: Error\n    labels:\n\
+    \      service: rabbitmq\n    annotations:\n      summary: Mensajes en DLQ; revisar\
+    \ consumer, MongoDB y DLQ.\n    data:\n    - refId: A\n      relativeTimeRange:\n\
+    \        from: 600\n        to: 0\n      datasourceUid: catalog-mimir\n      model:\n\
+    \        refId: A\n        expr: sum(rabbitmq_queue_messages_ready{queue=~\".*dlq\"\
+    })\n        instant: true\n        intervalMs: 1000\n        maxDataPoints: 43200\n\
+    \    - refId: C\n      datasourceUid: __expr__\n      relativeTimeRange:\n   \
+    \     from: 0\n        to: 0\n      model:\n        refId: C\n        type: threshold\n\
+    \        expression: A\n        conditions:\n        - type: query\n         \
+    \ evaluator:\n            type: gt\n            params:\n            - 0\n   \
+    \       operator:\n            type: and\n          reducer:\n            type:\
+    \ last\n            params: []\n          query:\n            params:\n      \
+    \      - C\n"

@@ -1,8 +1,13 @@
-FROM node:22-alpine
+FROM node:24-alpine AS dependencies
 WORKDIR /app
 COPY application/package*.json ./
 RUN npm ci --omit=dev --ignore-scripts
-COPY application/*.js application/*.cjs ./
+
+FROM node:24-alpine
+RUN rm -rf /usr/local/lib/node_modules /opt/yarn* /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/yarn*
+WORKDIR /app
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY application/package.json application/*.js application/*.cjs ./
 COPY database/catalog.sql ./database/catalog.sql
 COPY worker/index.js ./worker.js
 USER 1000:1000

@@ -1,0 +1,28 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: {name: catalog-signed-images}
+spec:
+  validationFailureAction: Enforce
+  background: false
+  webhookTimeoutSeconds: 20
+  rules:
+  - name: verify-catalog-images
+    match:
+      any:
+      - resources:
+          kinds: [Pod]
+          namespaces: [catalog]
+          selector:
+            matchExpressions: [{key: app, operator: In, values: [web, api, worker, seed]}]
+    verifyImages:
+    - imageReferences:
+      - ghcr.io/edgarantonioperezflores/distributedsystems-*
+      required: true
+      mutateDigest: true
+      verifyDigest: true
+      attestors:
+      - entries:
+        - keyless:
+            subject: https://github.com/EdgarAntonioPerezFlores/distributedsystems/.github/workflows/release.yml@refs/heads/*
+            issuer: https://token.actions.githubusercontent.com
+            rekor: {url: https://rekor.sigstore.dev}
