@@ -1,0 +1,3 @@
+creation_rules:
+  - path_regex: 'deploy/platform/data/.*\.sops\.yaml$'
+    encrypted_regex: '^(data|stringData)$'

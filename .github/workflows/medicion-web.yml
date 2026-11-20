@@ -1,0 +1,44 @@
+name: Medición aislada de presentación en K3s
+on:
+  workflow_dispatch:
+  push:
+    branches: [migracion-k3s]
+    paths: ['.github/workflows/medicion-web.yml']
+permissions: {contents: read, packages: read}
+jobs:
+  medir:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Herramientas de laboratorio
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq apache2-utils python3-yaml
+          curl -fsSL https://raw.githubusercontent.com/k3d-io/k3d/v5.8.3/install.sh -o /tmp/k3d-install.sh
+          TAG=v5.8.3 bash /tmp/k3d-install.sh
+      - name: Crear tres servidores sobre un único runner
+        run: |
+          k3d cluster create parcial --servers 3 --agents 0 --image rancher/k3s:v1.33.5-k3s1 --k3s-arg '--disable=traefik@server:*' --port '127.0.0.1:18080:30080@loadbalancer' --wait
+          mkdir -p evidencia
+          kubectl get nodes -o wide | tee evidencia/nodos.txt
+      - name: Desplegar presentación y comprobar respuesta
+        run: |
+          image=$(kubectl kustomize deploy/overlays/dev | awk '/image:.*distributedsystems-web:sha-/{image=$NF} END {print image}')
+          test -n "$image"
+          docker pull "$image" || { echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin; docker pull "$image"; }
+          k3d image import "$image" --cluster parcial
+          echo "$image" > evidencia/imagen.txt
+          # Sólo se consulta la página estática. Nginx resuelve el nombre api al arrancar.
+          kubectl create service clusterip api --tcp=8080:8080
+          kubectl kustomize deploy/overlays/dev | python3 -c 'import sys,yaml; docs=[d for d in yaml.safe_load_all(sys.stdin) if d["kind"]=="Deployment" and d["metadata"]["name"]=="web"]; assert len(docs)==1; d=docs[0];d["metadata"]["namespace"]="default";print(yaml.safe_dump(d))' | kubectl apply -f -
+          kubectl create service nodeport web --tcp=8080:8080 --node-port=30080
+          kubectl rollout status deploy/web --timeout=240s
+          kubectl get pods -o wide > evidencia/pods.txt
+          curl -fsS --retry 5 http://127.0.0.1:18080/ | grep -q 'API explorer'
+      - name: Medir GET / (30 segundos, c20)
+        run: |
+          ab -c 20 -t 30 -n 10000000 http://127.0.0.1:18080/ | tee evidencia/ab.txt
+          cat evidencia/ab.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: medicion-presentacion-k3s, path: evidencia/, retention-days: 30}

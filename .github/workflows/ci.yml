@@ -14,7 +14,7 @@ jobs:
       - run: terraform fmt -check -recursive && terraform init -backend=false && terraform validate
         working-directory: infra/terraform
       - uses: terraform-linters/setup-tflint@v4
-      - run: tflint --recursive --chdir=infra/terraform
+      - run: cd infra/terraform && tflint --recursive
       - uses: bridgecrewio/checkov-action@v12
         with: {directory: infra/terraform, framework: terraform}
       - run: |
@@ -23,7 +23,7 @@ jobs:
             docker run --rm -i ghcr.io/yannh/kubeconform:v0.6.7 -strict -summary < /tmp/$env.yaml
           done
       - run: docker build -t catalog-api -f application/Dockerfile.k3s . && docker build -t catalog-web -f web/Dockerfile.k3s .
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with: {image-ref: catalog-api, severity: 'HIGH,CRITICAL', exit-code: '1', ignore-unfixed: true}
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with: {image-ref: catalog-web, severity: 'HIGH,CRITICAL', exit-code: '1', ignore-unfixed: true}

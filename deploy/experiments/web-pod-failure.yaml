@@ -1,0 +1,10 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata: {name: catalog-web-pause, namespace: catalog}
+spec:
+  action: pod-failure
+  mode: one
+  duration: 30s
+  selector:
+    namespaces: [catalog]
+    labelSelectors: {app: web}

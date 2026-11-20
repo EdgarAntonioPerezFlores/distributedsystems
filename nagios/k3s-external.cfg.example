@@ -1,0 +1,26 @@
+# Replace addresses before enabling in the existing Nagios host.
+define host {
+  use generic-host
+  host_name catalog-k3s-lan
+  address catalog.lab.test
+}
+define service {
+  use generic-service
+  host_name catalog-k3s-lan
+  service_description Catalog readiness through ingress
+  check_command check_https_catalog
+}
+define command {
+  command_name check_https_catalog
+  command_line $USER1$/check_http -H $HOSTADDRESS$ -S --sni -u /api/readyz -e 200
+}
+define service {
+  use generic-service
+  host_name catalog-k3s-lan
+  service_description TLS expiry
+  check_command check_catalog_cert
+}
+define command {
+  command_name check_catalog_cert
+  command_line $USER1$/check_http -H $HOSTADDRESS$ -S --sni -C 15,5
+}
