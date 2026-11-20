@@ -1,0 +1,12 @@
+# Bucket preexistente en almacenamiento S3 compatible del laboratorio. Los
+# tres nodos NO deben depender de este servicio para procesar solicitudes.
+bucket = "terraform-catalog"
+key = "catalog/terraform.tfstate"
+region = "us-east-1"
+endpoints = { s3 = "https://estado.lab.test:9000" }
+use_path_style = true
+use_lockfile = true
+skip_credentials_validation = true
+skip_region_validation = true
+skip_requesting_account_id = true
+skip_metadata_api_check = true

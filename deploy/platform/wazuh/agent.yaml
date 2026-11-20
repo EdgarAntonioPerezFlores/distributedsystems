@@ -13,11 +13,13 @@ spec:
         env:
         - {name: NODE_NAME, valueFrom: {fieldRef: {fieldPath: spec.nodeName}}}
         volumeMounts:
+        - {name: enrollment-state, mountPath: /enrollment-state}
         - {name: audit, mountPath: /host/audit, readOnly: true}
         - {name: config, mountPath: /host/config/audit.yaml, readOnly: true}
         - {name: enroll, mountPath: /enroll, readOnly: true}
         resources: {requests: {cpu: 50m, memory: 96Mi}, limits: {cpu: 500m, memory: 256Mi}}
       volumes:
+      - {name: enrollment-state, hostPath: {path: /var/lib/catalog-wazuh-agent, type: DirectoryOrCreate}}
       - {name: audit, hostPath: {path: /var/lib/rancher/k3s/server/logs, type: Directory}}
       - {name: config, hostPath: {path: /etc/rancher/k3s/audit.yaml, type: File}}
       - {name: enroll, secret: {secretName: wazuh-authd-pass}}

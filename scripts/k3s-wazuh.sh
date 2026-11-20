@@ -8,7 +8,7 @@ umask 077
 stage=$(mktemp -d); trap 'rm -rf "$stage"' EXIT
 git clone -q --depth 1 -b v4.12.0 https://github.com/wazuh/wazuh-kubernetes "$stage/up"
 cd "$stage/up"
-test "$(git rev-parse HEAD)" = 41065afb5a1bef9f064492a8abffdfebf63c6306
+test "$(git rev-parse HEAD)" = 24832c9e84f5f2f0f4a2015b44e62386e328cdd3
 bash wazuh/certs/indexer_cluster/generate_certs.sh >/dev/null
 bash wazuh/certs/dashboard_http/generate_certs.sh >/dev/null
 python3 - <<'PY'
