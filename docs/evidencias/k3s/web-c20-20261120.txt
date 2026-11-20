@@ -1,0 +1,41 @@
+Fuente: https://github.com/EdgarAntonioPerezFlores/distributedsystems/actions/runs/44679944433
+Imagen web: sha-dd2ea94c21ea53a8c91bbfab8498e50745d66728
+Alcance: GET /, HTTP, tres servidores k3d/K3s sobre un solo runner ubuntu-24.04, sin API ni datos.
+Cliente: ApacheBench sin -k. Salida extraída del job medir.
+
+Server Software:        nginx/1.28.2
+Server Hostname:        127.0.0.1
+Server Port:            18080
+
+Document Path:          /
+Document Length:        1770 bytes
+
+Concurrency Level:      20
+Time taken for tests:   30.000 seconds
+Complete requests:      190065
+Failed requests:        70930
+   (Connect: 0, Receive: 0, Length: 70930, Exceptions: 0)
+Total transferred:      242677995 bytes
+HTML transferred:       210868950 bytes
+Requests per second:    6335.50 [#/sec] (mean)
+Time per request:       3.157 [ms] (mean)
+Time per request:       0.158 [ms] (mean, across all concurrent requests)
+Transfer rate:          7899.67 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.2      0       3
+Processing:     0    3  33.3      2    3012
+Waiting:        0    2  31.0      1    3012
+Total:          0    3  33.3      2    3012
+
+Percentage of the requests served within a certain time (ms)
+  50%      2
+  66%      2
+  75%      3
+  80%      3
+  90%      5
+  95%      5
+  98%      7
+  99%      8
+ 100%   3012 (longest request)

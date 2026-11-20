@@ -60,7 +60,10 @@ El script guarda AB completo, CSV, salud posterior, nodos, pods y uso de recurso
 | Plataforma y cliente | c / duración | Solicitudes | Req/s | p95 / p99 | Evidencia |
 |---|---:|---:|---:|---:|---|
 | Compose anterior, cliente en la VM | 20 / 600.002 s | 302663 | 504.44 | 87 / 134 ms | [Medición histórica; AB reportó cero fallidas](RESULTADOS.md) |
+| K3s/k3d, sólo web estática, un runner, sin keep-alive | 20 / 30.000 s | 190065 | 6335.50 | 5 / 8 ms | [AB completo](evidencias/k3s/web-c20-20261120.txt). 70930 fallidas por longitud; **no cumple integridad**. |
 | K3s, cliente de la LAN | 20 / 600 s previstos | — | — | — | Pendiente de ejecución en las computadoras del equipo. |
+
+La medición aislada usa GET / sin pasar por API ni datos. No es comparable con la medición Compose del catálogo y no acredita HA entre computadoras. 6335.50 req/s incluye respuestas fallidas.
 
 Para el failover, mantener una sonda externa, registrar UTC antes y después de retirar **un** pod web, comprobar réplicas Ready, HTTP y tiempo de recuperación; repetir por separado para un servidor sólo después de verificar tres miembros sanos. No declarar HA de host con tres VMs en la misma PC. Mantener Nagios en el equipo externo apuntando a la VIP y registrar HTTP, certificado y API. En Grafana (port-forward svc/lgtm 3000:3000 -n observability) revisar errores, latencia y saturación. Si crece la cola, comprobar worker, Mongo y DLQ antes de reintentar; no purgar mensajes para ocultar errores.
 
