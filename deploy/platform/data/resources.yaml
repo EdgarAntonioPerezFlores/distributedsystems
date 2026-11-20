@@ -118,3 +118,4 @@ spec:
       masterSet: cachemaster
       image:
         repository: bitnamilegacy/redis-sentinel
+    fullnameOverride: cache

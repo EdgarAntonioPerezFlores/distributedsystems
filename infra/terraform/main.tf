@@ -24,7 +24,10 @@ variable "environment" {
     error_message = "Usar dev o prod."
   }
 }
-variable "k3s_version" { default = "v1.33.5+k3s1" }
+variable "k3s_version" {
+  type    = string
+  default = "v1.33.5+k3s1"
+}
 provider "flux" {
   kubernetes = { config_path = pathexpand(var.kubeconfig) }
   git        = { url = var.git_url, branch = var.git_branch, ssh = { username = "git", private_key = file(pathexpand(var.git_key_file)) } }

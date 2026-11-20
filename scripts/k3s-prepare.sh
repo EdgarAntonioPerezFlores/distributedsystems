@@ -11,6 +11,10 @@ if ! kubectl get secret catalog-auth -n catalog >/dev/null 2>&1; then
   for key in DB_ROOT_PASSWORD DB_PASSWORD MONGO_PASSWORD REDIS_PASSWORD; do openssl rand -hex 24 | tr -d '\n' > "$tmp/$key"; done
   kubectl -n catalog create secret generic catalog-auth --from-file="$tmp"
 fi
+if ! kubectl -n catalog get secret catalog-writers >/dev/null 2>&1; then
+  : "${CATALOG_WRITER_PASSWORD:?Define la contraseña del usuario writer}"
+  printf '%s\n' "$CATALOG_WRITER_PASSWORD" | htpasswd -niB writer | kubectl -n catalog create secret generic catalog-writers --from-file=users=/dev/stdin
+fi
 kubectl wait --for=condition=Available deploy/cert-manager-webhook -n cert-manager --timeout=180s
 kubectl wait --for=condition=Available deploy/metallb-controller -n metallb-system --timeout=180s
 cat <<YAML | kubectl apply -f -

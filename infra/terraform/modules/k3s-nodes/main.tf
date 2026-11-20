@@ -1,3 +1,6 @@
+terraform {
+  required_version = ">= 1.10"
+}
 variable "servers" { type = list(string) }
 variable "login" { type = string }
 variable "version_k3s" { type = string }

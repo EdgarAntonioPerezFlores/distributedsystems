@@ -303,7 +303,8 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: catalog-seed-v1
-  annotations: {kustomize.toolkit.fluxcd.io/force: enabled}
+  annotations:
+    kustomize.toolkit.fluxcd.io/force: enabled
 spec:
   template:
     metadata:
@@ -415,6 +416,9 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: catalog
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: catalog-throttle@kubernetescrd
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
 spec:
   ingressClassName: traefik
   tls:

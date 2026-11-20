@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -eu
 : "${BASE_URL:?}"
+auth=()
+if [[ -n "${CATALOG_NETRC:-}" ]]; then auth=(--netrc-file "$CATALOG_NETRC"); fi
 id=$(python3 -c 'import uuid; print(uuid.uuid4())')
 url="${BASE_URL%/}/api/products/ST-001/reviews"
 for _ in 1 2; do
-  code=$(curl -sS -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -H "Idempotency-Key: $id" -d "{\"reviewer\":\"lab\",\"rating\":5,\"comment\":\"$id\"}" "$url")
+  code=$(curl "${auth[@]}" -sS -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -H "Idempotency-Key: $id" -d "{\"reviewer\":\"lab\",\"rating\":5,\"comment\":\"$id\"}" "$url")
   test "$code" = 202
 done
 for _ in $(seq 1 30); do

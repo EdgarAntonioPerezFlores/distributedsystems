@@ -65,7 +65,11 @@ const start = async () => {
         sendJson(response,200,rows,trace); return;
       }
       if(pathname==='/healthz') return sendJson(response,200,{alive:true});
-      if (pathname === '/readyz' || pathname === '/health/deep' && request.method === 'GET') {
+      if (pathname === '/readyz' && request.method === 'GET') {
+        await Promise.all([pool.query('SELECT 1'),mongo.db().command({ping:1})]);
+        return sendJson(response,200,{ready:true,cache:redis.ready()?'ready':'degraded'},trace);
+      }
+      if (pathname === '/health/deep' && request.method === 'GET') {
         await Promise.all([pool.query('SELECT 1'),mongo.db().command({ping:1})]);
         sendJson(response,redis.ready()?200:503,{sql:true,mongo:true,cache:redis.ready()},trace); return;
       }

@@ -10,17 +10,23 @@ metadata:
   namespace: observability
 data:
   gateway.yaml: "exporters:\n  otlp:\n    endpoint: lgtm:4317\n    tls:\n      insecure:\
-    \ true\nextensions:\n  health_check:\n    endpoint: 0.0.0.0:13133\nprocessors:\n\
-    \  batch: {}\n  k8sattributes:\n    auth_type: serviceAccount\nreceivers:\n  filelog:\n\
+    \ true\n  otlphttp/mimir:\n    metrics_endpoint: http://mimir:9009/otlp/v1/metrics\n\
+    extensions:\n  health_check:\n    endpoint: 0.0.0.0:13133\nprocessors:\n  batch:\
+    \ {}\n  k8sattributes:\n    auth_type: serviceAccount\nreceivers:\n  filelog:\n\
     \    include:\n    - /var/log/pods/catalog_*/*/*.log\n    include_file_path: true\n\
     \    operators:\n    - type: container\n    start_at: end\n  otlp:\n    protocols:\n\
     \      grpc:\n        endpoint: 0.0.0.0:4317\n      http:\n        endpoint: 0.0.0.0:4318\n\
+    \  prometheus:\n    config:\n      scrape_configs:\n      - job_name: rabbitmq\n\
+    \        metrics_path: /metrics/per-object\n        scrape_interval: 30s\n   \
+    \     static_configs:\n        - targets:\n          - broker-server-0.broker-nodes.catalog.svc:15692\n\
+    \          - broker-server-1.broker-nodes.catalog.svc:15692\n          - broker-server-2.broker-nodes.catalog.svc:15692\n\
     service:\n  extensions:\n  - health_check\n  pipelines:\n    logs:\n      exporters:\n\
     \      - otlp\n      processors:\n      - k8sattributes\n      - batch\n     \
     \ receivers:\n      - otlp\n    metrics:\n      exporters:\n      - otlp\n   \
-    \   processors:\n      - k8sattributes\n      - batch\n      receivers:\n    \
-    \  - otlp\n    traces:\n      exporters:\n      - otlp\n      processors:\n  \
-    \    - k8sattributes\n      - batch\n      receivers:\n      - otlp\n"
+    \   - otlphttp/mimir\n      processors:\n      - k8sattributes\n      - batch\n\
+    \      receivers:\n      - otlp\n      - prometheus\n    traces:\n      exporters:\n\
+    \      - otlp\n      processors:\n      - k8sattributes\n      - batch\n     \
+    \ receivers:\n      - otlp\n"
   agent.yaml: "exporters:\n  otlp:\n    endpoint: otel:4317\n    tls:\n      insecure:\
     \ true\nextensions:\n  health_check:\n    endpoint: 0.0.0.0:13133\nprocessors:\n\
     \  batch: {}\n  k8sattributes:\n    auth_type: serviceAccount\nreceivers:\n  filelog:\n\
@@ -188,6 +194,23 @@ spec:
           limits:
             memory: 3Gi
             cpu: '2'
+        volumeMounts:
+        - name: provisioning
+          subPath: mimir.yaml
+          mountPath: /otel-lgtm/grafana/conf/provisioning/datasources/mimir.yaml
+          readOnly: true
+        - name: provisioning
+          subPath: catalog.yaml
+          mountPath: /otel-lgtm/grafana/conf/provisioning/dashboards/catalog.yaml
+          readOnly: true
+        - name: provisioning
+          subPath: catalog.json
+          mountPath: /etc/catalog-dashboards/catalog.json
+          readOnly: true
+      volumes:
+      - name: provisioning
+        configMap:
+          name: catalog-grafana
 ---
 apiVersion: v1
 kind: Service
@@ -202,3 +225,108 @@ spec:
     port: 3000
   - name: p4317
     port: 4317
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mimir-config
+  namespace: observability
+data:
+  mimir.yaml: "activity_tracker:\n  filepath: /data/activity.log\nblocks_storage:\n\
+    \  bucket_store:\n    sync_dir: /data/sync\n  tsdb:\n    dir: /data/tsdb\ncommon:\n\
+    \  storage:\n    backend: filesystem\n    filesystem:\n      dir: /data/objects\n\
+    compactor:\n  data_dir: /data/compactor\ningester:\n  ring:\n    replication_factor:\
+    \ 1\nmultitenancy_enabled: false\nserver:\n  http_listen_port: 9009\nstore_gateway:\n\
+    \  sharding_ring:\n    replication_factor: 1\n"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mimir-data
+  namespace: observability
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 4Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mimir
+  namespace: observability
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mimir
+  template:
+    metadata:
+      labels:
+        app: mimir
+    spec:
+      securityContext:
+        fsGroup: 10001
+      containers:
+      - name: mimir
+        image: grafana/mimir:2.16.1
+        args:
+        - -config.file=/conf/mimir.yaml
+        - -target=all
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: '2'
+            memory: 2Gi
+        volumeMounts:
+        - name: conf
+          mountPath: /conf
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: conf
+        configMap:
+          name: mimir-config
+      - name: data
+        persistentVolumeClaim:
+          claimName: mimir-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mimir
+  namespace: observability
+spec:
+  selector:
+    app: mimir
+  ports:
+  - port: 9009
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: catalog-grafana
+  namespace: observability
+data:
+  mimir.yaml: "apiVersion: 1\ndatasources:\n- access: proxy\n  name: Catalog Mimir\n\
+    \  type: prometheus\n  uid: catalog-mimir\n  url: http://mimir:9009/prometheus\n"
+  catalog.yaml: "apiVersion: 1\nproviders:\n- name: Catalog\n  options:\n    path:\
+    \ /etc/catalog-dashboards\n  type: file\n"
+  catalog.json: '{"uid": "catalog-queues", "title": "Cat\u00e1logo: colas y consumidores",
+    "schemaVersion": 39, "panels": [{"id": 1, "title": "Mensajes listos", "type":
+    "timeseries", "datasource": {"type": "prometheus", "uid": "catalog-mimir"}, "gridPos":
+    {"x": 0, "y": 0, "w": 12, "h": 8}, "targets": [{"refId": "A", "expr": "sum by(queue)
+    (rabbitmq_queue_messages_ready)"}]}, {"id": 2, "title": "Mensajes sin confirmar",
+    "type": "timeseries", "datasource": {"type": "prometheus", "uid": "catalog-mimir"},
+    "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8}, "targets": [{"refId": "A", "expr":
+    "sum by(queue) (rabbitmq_queue_messages_unacked)"}]}, {"id": 3, "title": "Mensajes
+    en DLQ", "type": "timeseries", "datasource": {"type": "prometheus", "uid": "catalog-mimir"},
+    "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8}, "targets": [{"refId": "A", "expr":
+    "sum(rabbitmq_queue_messages_ready{queue=~\".*dlq\"})"}]}, {"id": 4, "title":
+    "Scrape del broker", "type": "timeseries", "datasource": {"type": "prometheus",
+    "uid": "catalog-mimir"}, "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8}, "targets":
+    [{"refId": "A", "expr": "up{job=\"rabbitmq\"}"}]}]}'
