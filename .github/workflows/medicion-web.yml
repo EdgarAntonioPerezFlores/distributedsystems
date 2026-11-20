@@ -23,16 +23,16 @@ jobs:
           kubectl get nodes -o wide | tee evidencia/nodos.txt
       - name: Desplegar presentación y comprobar respuesta
         run: |
-          image=$(kubectl kustomize deploy/overlays/dev | awk '/image:.*distributedsystems-web:sha-/{image=$NF} END {print image}')
-          test -n "$image"
-          docker pull "$image" || { echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin; docker pull "$image"; }
+          export LAB_IMAGE="catalog-web-lab:sha-$GITHUB_SHA"
+          image="$LAB_IMAGE"
+          docker build -f web/Dockerfile.k3s -t "$image" .
           k3d image import "$image" --cluster parcial
           echo "$image" > evidencia/imagen.txt
           # Sólo se consulta la página estática. Nginx resuelve el nombre api al arrancar.
           kubectl create namespace observability
           kubectl -n observability create service clusterip otel --tcp=4317:4317
           kubectl create service clusterip api --tcp=8080:8080
-          kubectl kustomize deploy/overlays/dev | python3 -c 'import sys,yaml; docs=[d for d in yaml.safe_load_all(sys.stdin) if d["kind"]=="Deployment" and d["metadata"]["name"]=="web"]; assert len(docs)==1; d=docs[0];d["metadata"]["namespace"]="default";print(yaml.safe_dump(d))' | kubectl apply -f -
+          kubectl kustomize deploy/overlays/dev | python3 -c 'import os,sys,yaml; docs=[d for d in yaml.safe_load_all(sys.stdin) if d["kind"]=="Deployment" and d["metadata"]["name"]=="web"]; assert len(docs)==1; d=docs[0];d["metadata"]["namespace"]="default";d["spec"]["template"]["spec"]["containers"][0]["image"]=os.environ["LAB_IMAGE"];print(yaml.safe_dump(d))' | kubectl apply -f -
           kubectl create service nodeport web --tcp=8080:8080 --node-port=30080
           kubectl rollout status deploy/web --timeout=240s
           kubectl get pods -o wide > evidencia/pods.txt
