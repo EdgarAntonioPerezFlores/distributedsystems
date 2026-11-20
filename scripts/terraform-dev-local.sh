@@ -11,12 +11,12 @@ import json,sys
 assert json.load(open(sys.argv[1])).get('backend',{}).get('type')=='local','No mezclar backends'
 PY
 fi
-cp "$repo/infra/terraform/main.tf" "$repo/infra/terraform/.terraform.lock.hcl" "$dir/"
+cp "$repo/infra/terraform/"*.tf "$repo/infra/terraform/.terraform.lock.hcl" "$dir/"
 mkdir -p "$dir/modules"
 cp -R "$repo/infra/terraform/modules/." "$dir/modules/"
 # Keep the tracked S3 backend in the project; this private copy is explicitly dev-only.
-sed -i 's/backend "s3" {}/backend "local" {}/' "$dir/main.tf"
-grep -q 'backend "local" {}' "$dir/main.tf"
+sed -i 's/backend "s3" {}/backend "local" {}/' "$dir/versions.tf"
+grep -q 'backend "local" {}' "$dir/versions.tf"
 cp -n "$repo/infra/terraform/lab.tfvars.example" "$dir/lab.tfvars" || true
 terraform -chdir="$dir" init -input=false
 terraform -chdir="$dir" workspace select -or-create dev

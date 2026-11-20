@@ -2,6 +2,8 @@
 
 [Estado y resultados del parcial 3](docs/ESTADO-PARCIAL-3.md) · [Implementación e instalación](docs/MIGRACION-K3S.md) · [Plan del profesor](PLATFORM-MIGRATION-PLAN.md) · [Versión del segundo parcial](https://github.com/EdgarAntonioPerezFlores/distributedsystems/tree/segundo-parcial).
 
+[Demostración de GitOps con Flux, GitHub Actions y Traefik](docs/DEMO-GITOPS.md).
+
 La siguiente documentación corresponde al sistema Compose que sirve de referencia.
 
 # Sistema distribuido de tres capas — laboratorio VirtualBox

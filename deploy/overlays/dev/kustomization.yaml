@@ -9,3 +9,5 @@ images:
 - name: catalog-web
   newName: ghcr.io/edgarantonioperezflores/distributedsystems-web
   newTag: sha-741e584043f4212d14afb7b1ff8f18f875bbd05f
+patches:
+- path: web-entrega.yaml
